@@ -34,6 +34,14 @@ import java.util.regex.Pattern;
  * A work area with CSV Utilities.
  * This is designed to be used on the fly. Code in main() will usually be for one time
  * CSV runs made for a specific purpose.
+ *
+ * For ResultScorer to run propperly, two CSV files are needed.
+ *  Both CSVs must have a Unique ID as the first column. Visual Web Ripper does this by default.
+ *  The main CSV must have columns labeled "Start URL", "Dealer No", "Dealer Name", "Dealer City"
+ *  If you do not have the Dealer Number, you need to at least add a column with the "Dealer No" header for the
+ *      program to run properly.
+ *  //TODO Fix that.
+ *  The secondary CSV must have column labeled "Name" and "Link"
  */
 
 public class Main {
