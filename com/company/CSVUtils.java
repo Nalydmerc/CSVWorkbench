@@ -2,8 +2,19 @@ package com.company;
 
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Scanner;
 
 public class CSVUtils {
+
+    public String requestPath(String message) {
+        Scanner in = new Scanner(System.in);
+        System.out.println(message);
+        String path = in.nextLine();
+        if (path.startsWith("\"")) {
+            path = path.substring(1,path.length()-1);
+        }
+        return path;
+    }
 
     public void writeCSV(String path, ArrayList<String[]> lines) {
         System.out.println("Writing File: " + path + "...");
@@ -39,18 +50,17 @@ public class CSVUtils {
     public ArrayList<String[]> getCSV(String path) {
         String fileName = path.substring(path.lastIndexOf("\\")+1);
         System.out.println("Reading file: " + fileName + "...");
-        ArrayList<String[]> csvFile = new ArrayList<String[]>();
-        String csvPath = path;
+        ArrayList<String[]> csvFile = new ArrayList<>();
         BufferedReader br = null;
-        String line = "";
+        String line;
 
         try {
-            BufferedReader readFirstList = new BufferedReader(new FileReader(csvPath));
+            BufferedReader readFirstList = new BufferedReader(new FileReader(path));
             String firstLine = readFirstList.readLine();
             String[] separated = firstLine.split(",");
             int numColumns = separated.length;
 
-            br = new BufferedReader(new FileReader(csvPath));
+            br = new BufferedReader(new FileReader(path));
             while ((line = br.readLine()) != null) {
 
                 ArrayList<String> columns = new ArrayList<>();
@@ -99,8 +109,6 @@ public class CSVUtils {
 
                 csvFile.add(columns.toArray(new String[numColumns]));
             }
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
