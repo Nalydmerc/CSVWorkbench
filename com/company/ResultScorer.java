@@ -8,10 +8,10 @@ import java.util.Scanner;
 
 public class ResultScorer {
 
-    public static String[] dealerTypes = {
+    private static String[] dealerTypes = {
             "Honda", "Acura", "Toyota", "Ford", "Hyundai", "Dodge", "Chevrolet","Chrysler",
             "Jeep", "Lexus", "Nissan", "Fiat", "Lincoln", "Mazda", "Infinity", "Jaguar", "Bently"};
-    public static String[] blacklist = {
+    private static String[] blacklist = {
             "bbb.org/", "foursquare.com/", "yelp.com/", "yellowpages.com/", "yellowpages.ca/", "yelp.ca/",
             "twitter.com/", "instagram.com/", "cars.com/", "CitySearch.com/", "edmunds.com/", "facebook.com/",
             "yahoo.com/", "youtube.com/", "dealerrater.com/", "dealerrater.ca", "autotrader.com/", "autotrader.ca",
@@ -36,8 +36,8 @@ public class ResultScorer {
      */
     private ArrayList<String[]> organizeCSV(File mainCSV, File secondaryCSV) {
 
-        ArrayList<String[]> parsedMainCSV = csvUtils.getCSV(mainCSV.getPath());
-        ArrayList<String[]> parsedSecondaryCSV = csvUtils.getCSV(secondaryCSV.getPath());
+        ArrayList<String[]> parsedMainCSV = CSVUtils.getCSV(mainCSV.getPath());
+        ArrayList<String[]> parsedSecondaryCSV = CSVUtils.getCSV(secondaryCSV.getPath());
         ArrayList<String[]> toWrite = new ArrayList<>();
 
         HashMap<String, String[]> parentMap = new HashMap<>();
@@ -144,7 +144,7 @@ public class ResultScorer {
         String path = mainCSV.getPath();
         String folderPath = path.substring(0,path.lastIndexOf("\\")+1);
         String fileName = path.substring(path.lastIndexOf("\\")+1);
-        csvUtils.writeCSV(folderPath + "Organized" + fileName, toWrite);
+        CSVUtils.writeCSV(folderPath + "Organized" + fileName, toWrite);
         return toWrite;
     }
 
@@ -157,7 +157,7 @@ public class ResultScorer {
         File secondaryCSV = null;
 
         do {
-            String path = csvUtils.requestPath("Enter main file path: ");
+            String path = CSVUtils.requestPath("Enter main file path: ");
             mainCSV = new File(path);
             if (!mainCSV.exists()) {
                 System.out.println("Error: That CSV does not exist. Double check your file path.");
@@ -277,7 +277,6 @@ public class ResultScorer {
 
             for (Map.Entry<String[], Integer> entry : resultsMap.entrySet()) {
                 if (entry.getValue() >= highestScore-1) {
-                    System.out.println("Name: " + name + "\nResult: " + entry.getKey()[0] + "\nURL: " + entry.getKey()[1] + "\nScore: " + entry.getValue());
                     String[] toAdd = {startUrl, dealerNo, name, entry.getKey()[0], entry.getKey()[1]};
                     processedOrganizedCSV.add(toAdd);
                 }
@@ -286,7 +285,7 @@ public class ResultScorer {
             i += resultIndex;
         }
 
-        csvUtils.writeCSV(folderPath + "Processed" + fileNameWithoutExtension + ".csv", processedOrganizedCSV);
+        CSVUtils.writeCSV(folderPath + "Processed" + fileNameWithoutExtension + ".csv", processedOrganizedCSV);
     }
 
     /**
@@ -380,8 +379,6 @@ public class ResultScorer {
                 }
                 String scoreAgainstName = name.replace(" ", "");
                 scoreAgainstName = scoreAgainstName.toLowerCase();
-                System.out.println("Name: " + scoreAgainstName);
-                System.out.println("ScoreURL: " + resultURL);
 
                 //Begin scoring
                 if (resultURL.contains(scoreAgainstName)) {
@@ -410,7 +407,7 @@ public class ResultScorer {
         return resultsMap;
     }
 
-    public File requestResultsFile(String folderPath) {
+    private File requestResultsFile(String folderPath) {
         Scanner in = new Scanner(System.in);
         File folder = new File(folderPath);
         File[] listOfFiles = folder.listFiles();

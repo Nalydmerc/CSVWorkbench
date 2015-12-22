@@ -2,6 +2,7 @@ package com.company;
 
 import java.io.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Scanner;
 
 /**
@@ -17,7 +18,7 @@ public class CSVUtils {
      * @param message to tell user when requesting path
      * @return user input path.
      */
-    public String requestPath(String message) {
+    public static String requestPath(String message) {
         Scanner in = new Scanner(System.in);
         System.out.println(message);
         String path = in.nextLine();
@@ -27,12 +28,30 @@ public class CSVUtils {
         return path;
     }
 
+    public static HashMap<String, String[]> createMapFrom(String path, int primaryKeyColumn) {
+        ArrayList<String[]> rows = getCSV(path);
+        return createMapFrom(rows, primaryKeyColumn);
+    }
+
+    /**
+     * Creates a HashMap so that values can be looked up easily when piecing together CSVs that may not be in the same order.
+     */
+    public static HashMap<String, String[]> createMapFrom(ArrayList<String[]> rows, int primaryKeyColumn) {
+        HashMap<String, String[]> map = new HashMap<>();
+
+        for (String[] row : rows) {
+            map.put(row[primaryKeyColumn], row);
+        }
+
+        return map;
+    }
+
     /**
      * Write to CSV file
      * @param path to file. Will create new if !exist
      * @param lines List of rows, each row is an array of columns.
      */
-    public void writeCSV(String path, ArrayList<String[]> lines) {
+    public static void writeCSV(String path, ArrayList<String[]> lines) {
         String fileName = path.substring(path.lastIndexOf("\\") + 1);
         System.out.println("[CSVUtils] Writing File: " + fileName + " ...");
         try {
@@ -63,7 +82,7 @@ public class CSVUtils {
      * @param path to CSV
      * @return List of rows, each row is an array of columns.
      */
-    public ArrayList<String[]> getCSV(String path) {
+    public static ArrayList<String[]> getCSV(String path) {
         String fileName = path.substring(path.lastIndexOf("\\") + 1);
         System.out.println("[CSVUtils] Reading file: " + fileName + " ...");
         ArrayList<String[]> csvFile = new ArrayList<>();
