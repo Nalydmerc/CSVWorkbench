@@ -22,8 +22,7 @@
 
 package com.company;
 
-import java.io.*;
-import java.util.*;
+import java.util.ArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -41,6 +40,7 @@ import java.util.regex.Pattern;
  *  If you do not have the Dealer Number, you need to at least add a column with the "Dealer No" header for the
  *      program to run properly.
  *  //TODO Fix that.
+ *  //TODO add method to list all files if no files are found containing "_"
  *  The secondary CSV must have column labeled "Name" and "Link"
  */
 

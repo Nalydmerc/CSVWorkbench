@@ -8,18 +8,32 @@ import java.util.Scanner;
 
 public class ResultScorer {
 
-    private CSVUtils csvUtils = new CSVUtils();
     public static String[] dealerTypes = {
             "Honda", "Acura", "Toyota", "Ford", "Hyundai", "Dodge", "Chevrolet","Chrysler",
             "Jeep", "Lexus", "Nissan", "Fiat", "Lincoln", "Mazda", "Infinity", "Jaguar", "Bently"};
-
+    public static String[] blacklist = {
+            "bbb.org/", "foursquare.com/", "yelp.com/", "yellowpages.com/", "yellowpages.ca/", "yelp.ca/",
+            "twitter.com/", "instagram.com/", "cars.com/", "CitySearch.com/", "edmunds.com/", "facebook.com/",
+            "yahoo.com/", "youtube.com/", "dealerrater.com/", "dealerrater.ca", "autotrader.com/", "autotrader.ca",
+            "autocatch.com/", "wheels.com/", "unhaggle.com/", "oodle.com/", "monsterauto.ca/", "ourbis.ca/",
+            "canpages.ca/", "goldbook.ca/"};
     private static String[] possibleExtensions = {"Results","Links","dealers"};
+    private CSVUtils csvUtils = new CSVUtils();
     private Main main;
 
     public ResultScorer(Main main) {
         this.main = main;
     }
 
+    /**
+     * Pieces together two CSVs based on the output from Visual Web Ripper.
+     *
+     * @param mainCSV      contains one entry for every search. Headers: ID (must be first column), Dealer No, Dealer Name, Start URL
+     * @param secondaryCSV contains multiple results for every search. headers: ID (must be first column), Name, Link
+     * @return List of rows, one row for each result, which also contains information from the mainCSV about the search.
+     * Column headers ordered: SearchURL, Dealer No, Search Name, Result, Link
+     * @implNote There are special additions to handle yahoo local links, as they're a bit different. Additions are properly commented.
+     */
     private ArrayList<String[]> organizeCSV(File mainCSV, File secondaryCSV) {
 
         ArrayList<String[]> parsedMainCSV = csvUtils.getCSV(mainCSV.getPath());
@@ -134,6 +148,9 @@ public class ResultScorer {
         return toWrite;
     }
 
+    /**
+     * Starts the ResultScorer.
+     */
     public void run() {
 
         File mainCSV;
@@ -147,6 +164,7 @@ public class ResultScorer {
             }
         } while(!mainCSV.exists());
 
+        //Secondary CSV
         String mainCSVAbPath = mainCSV.getAbsolutePath();
         String folderPath = mainCSVAbPath.substring(0, mainCSVAbPath.lastIndexOf("\\")+1);
         String fileNameWithoutExtension = mainCSVAbPath.substring(mainCSVAbPath.lastIndexOf("\\")+1, mainCSVAbPath.length()-4);
@@ -167,17 +185,41 @@ public class ResultScorer {
             secondaryCSV = this.requestResultsFile(folderPath);
         }
 
-        System.out.println("Enter Dealer Type:");
+        //Dealer type
+        System.out.println("Enter Dealer Type. Make sure to double check your spelling:");
         String currentDealerType = in.nextLine();
 
-        System.out.println("Organizing CSV file...");
+        //Blacklist
+        System.out.print("Enabling Blacklist will drop common social media and review sites.\n" +
+                "This reduces false positives if you are searching for unique URLs." +
+                "\nUse Blacklist? (Y/N): ");
+        String input = in.nextLine().toLowerCase();
+        boolean useBL = false;
+        if (input.contains("yes") || input.contains("es") || input.contains("ye") || input.equalsIgnoreCase("y")) {
+            useBL = true;
+        }
+
+        //URLscoring
+        System.out.println("Scoring the URL as an extra measure can increase accuracy when searching for unique URLS," +
+                "\nsuch as dealer websites. If you're only processing results from a single website, you might want to" +
+                "\nturn this off." +
+                "\nScore URLS? (Y/N)");
+        input = in.nextLine().toLowerCase();
+        boolean scoreURLs = false;
+        if (input.contains("yes") || input.contains("es") || input.contains("ye") || input.equalsIgnoreCase("y")) {
+            scoreURLs = true;
+        }
+
+        //End user input
+
+        System.out.println("[ResultSorter] Organizing CSV file...");
         ArrayList<String[]> parsedOrganizedCSV = this.organizeCSV(mainCSV, secondaryCSV);
-        System.out.println("CSV Organized.");
+        System.out.println("[ResultSorter] CSV Organized.");
 
         ArrayList<String[]> processedOrganizedCSV = new ArrayList<>();
         processedOrganizedCSV.add(new String[]{"Search URL","Dealer No","Search Name","Result","Link"});
 
-        System.out.println("Iterating through results...");
+        System.out.println("[ResultSorter] Iterating through results...");
 
         int i = 1;
         while (i < parsedOrganizedCSV.size()-1) {
@@ -194,7 +236,14 @@ public class ResultScorer {
             if (i + resultIndex < parsedOrganizedCSV.size()) {
                 while (parsedOrganizedCSV.get(i+resultIndex)[0].equalsIgnoreCase(startUrl)) {
                     String[] result = {parsedOrganizedCSV.get(i + resultIndex)[4], parsedOrganizedCSV.get(i + resultIndex)[5]};
-                    results.add(result);
+                    //Check Blacklist
+                    if (useBL) {
+                        if (!isBlacklisted(result[1])) {
+                            results.add(result);
+                        }
+                    } else {
+                        results.add(result);
+                    }
                     if (i + resultIndex + 1 >= parsedOrganizedCSV.size()) {
                         break;
                     }
@@ -202,12 +251,21 @@ public class ResultScorer {
                 }
             } else {
                 String[] result = {parsedOrganizedCSV.get(i + resultIndex)[4], parsedOrganizedCSV.get(i + resultIndex)[5]};
-                results.add(result);
+                //Check Blacklist
+                if (useBL) {
+                    if (!isBlacklisted(result[1])) {
+                        results.add(result);
+                    }
+                } else {
+                    results.add(result);
+                }
+
                 resultIndex++;
             }
 
+            Map<String[], Integer> resultsMap = this.scoreResults(name, city, currentDealerType, results, scoreURLs);
 
-            Map<String[], Integer> resultsMap = this.processResults(name, city, currentDealerType, results);
+
 
             int highestScore = 0;
 
@@ -219,7 +277,7 @@ public class ResultScorer {
 
             for (Map.Entry<String[], Integer> entry : resultsMap.entrySet()) {
                 if (entry.getValue() >= highestScore-1) {
-
+                    System.out.println("Name: " + name + "\nResult: " + entry.getKey()[0] + "\nURL: " + entry.getKey()[1] + "\nScore: " + entry.getValue());
                     String[] toAdd = {startUrl, dealerNo, name, entry.getKey()[0], entry.getKey()[1]};
                     processedOrganizedCSV.add(toAdd);
                 }
@@ -231,17 +289,36 @@ public class ResultScorer {
         csvUtils.writeCSV(folderPath + "Processed" + fileNameWithoutExtension + ".csv", processedOrganizedCSV);
     }
 
+    /**
+     * Check if url is on blacklist.
+     *
+     * @param url
+     */
+    private boolean isBlacklisted(String url) {
+        //Check blacklist
+        boolean isBlacklisted = false;
+        for (String site : blacklist) {
+            if (url.toLowerCase().contains(site)) {
+                isBlacklisted = true;
+            }
+        }
+        return isBlacklisted;
+    }
 
     /**
      * Processes the results to find the correct listing.
-     *  @param results An array of the results as represented by an array containing
+     *
+     * @param results An array of the results as represented by an array containing
      *      the name and link of the entry. {name, link}
-     *  @return A map of the results as represented by an array containing
+     * @param name of dealership; used in the scoring process
+     * @param city of dealership; used in the scoring process
+     * @param dealerType used in the scoring process
+     * @return A map of the results as represented by an array containing
      *      the name and link of the entry, and the integer representing its score
      */
 
-    public Map<String[], Integer> processResults(String name, String city,
-                                                 String dealerType, ArrayList<String[]> results) {
+    public Map<String[], Integer> scoreResults(String name, String city, String dealerType,
+                                               ArrayList<String[]> results, boolean scoreURLs) {
 
         Map<String[], Integer> resultsMap = new HashMap<>();
         String[] nameWords = name.split(" ");
@@ -287,6 +364,46 @@ public class ResultScorer {
             if (resultName.toLowerCase().contains(city)) {
                 hitPoints -= city.split(" ").length;
             }
+
+            //Score URL
+            if (scoreURLs) {
+
+                //Format strings first
+                String resultURL = result[1].toLowerCase();
+                if (resultURL.startsWith("http://")) {
+                    resultURL = resultURL.substring(7);
+                } else if (resultURL.startsWith("https://")) {
+                    resultURL = resultURL.substring(8);
+                }
+                if (resultURL.contains("/")) {
+                    resultURL = resultURL.substring(0, resultURL.indexOf("/"));
+                }
+                String scoreAgainstName = name.replace(" ", "");
+                scoreAgainstName = scoreAgainstName.toLowerCase();
+                System.out.println("Name: " + scoreAgainstName);
+                System.out.println("ScoreURL: " + resultURL);
+
+                //Begin scoring
+                if (resultURL.contains(scoreAgainstName)) {
+                    hitPoints += 10;
+                }
+
+                for (String word : nameWords) {
+                    if (resultURL.contains(word.toLowerCase())) {
+                        hitPoints++;
+                    }
+                }
+
+                if (resultURL.contains(dealerType.toLowerCase())) {
+                    hitPoints++;
+                }
+
+                for (String type : dealerTypes) {
+                    if (resultURL.contains(type.toLowerCase()) && !type.equalsIgnoreCase(dealerType)) {
+                        hitPoints -= 3;
+                    }
+                }
+            }
             resultsMap.put(result, hitPoints);
         }
 
@@ -308,7 +425,7 @@ public class ResultScorer {
                 int fileNo = Integer.parseInt(in.nextLine());
                 return listOfFiles[fileNo];
             } catch (NumberFormatException ex) {
-                System.out.println("\nError: Input was not an integer!\n");
+                System.out.println("\nError: Input was not an integer. Enter the number of the entry from the list.\n");
             }
         }
     }
