@@ -35,6 +35,8 @@ public class CSVUtils {
 
     /**
      * Creates a HashMap so that values can be looked up easily when piecing together CSVs that may not be in the same order.
+     * @param rows CSVUtils csv Hashmap
+     * @param primaryKeyColumn Key you will search for
      */
     public static HashMap<String, String[]> createMapFrom(ArrayList<String[]> rows, int primaryKeyColumn) {
         HashMap<String, String[]> map = new HashMap<>();
@@ -75,7 +77,6 @@ public class CSVUtils {
         }
         System.out.println("[CSVUtils] Done");
     }
-
 
     /**
      * Read CSV file into an ArrayList<String[]>

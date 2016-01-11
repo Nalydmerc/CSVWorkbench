@@ -1,10 +1,7 @@
 package com.company;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Scanner;
+import java.util.*;
 
 public class ResultScorer {
 
@@ -18,12 +15,11 @@ public class ResultScorer {
             "autocatch.com/", "wheels.com/", "unhaggle.com/", "oodle.com/", "monsterauto.ca/", "ourbis.ca/",
             "canpages.ca/", "goldbook.ca/"};
     private static String[] possibleExtensions = {"Results","Links","dealers"};
-    private CSVUtils csvUtils = new CSVUtils();
-    private Main main;
-
-    public ResultScorer(Main main) {
-        this.main = main;
-    }
+    private int nameIndex = -1;
+    private int cityIndex = -1;
+    private int resultNameIndex = -1;
+    private int resultLinkIndex = -1;
+    private ArrayList<String[]> organizedCSV;
 
     /**
      * Pieces together two CSVs based on the output from Visual Web Ripper.
@@ -34,19 +30,70 @@ public class ResultScorer {
      * Column headers ordered: SearchURL, Dealer No, Search Name, Result, Link
      * @implNote There are special additions to handle yahoo local links, as they're a bit different. Additions are properly commented.
      */
-    private ArrayList<String[]> organizeCSV(File mainCSV, File secondaryCSV) {
+    private void organizeCSV(File mainCSV, File secondaryCSV) {
 
+        //Raw CSVs
         ArrayList<String[]> parsedMainCSV = CSVUtils.getCSV(mainCSV.getPath());
         ArrayList<String[]> parsedSecondaryCSV = CSVUtils.getCSV(secondaryCSV.getPath());
         ArrayList<String[]> toWrite = new ArrayList<>();
 
+        ArrayList<String> headers = new ArrayList<>(Arrays.asList(parsedMainCSV.get(0)));
+        headers.add("Name");
+        headers.add("Link");
+        toWrite.add(headers.toArray(new String[headers.size()]));
+
+        //Get indexes
+        for (int i = 1; i < headers.size(); i++) {
+            String head = headers.get(i);
+            if (head.toLowerCase().contains("name")) {
+                this.nameIndex = i;
+            } else if (head.toLowerCase().contains("city")) {
+                this.cityIndex = i;
+            }
+        }
+
+        headers = new ArrayList<String>(Arrays.asList(parsedSecondaryCSV.get(0)));
+
+        for (int i = 1; i < headers.size(); i++) {
+            String head = headers.get(i);
+            if (head.toLowerCase().contains("name")) {
+                resultNameIndex = i;
+            } else if (head.toLowerCase().contains("link")) {
+                resultLinkIndex = i;
+            }
+        }
+
+        if (nameIndex == -1 || cityIndex == -1 || resultNameIndex == -1 || resultLinkIndex == -1) {
+            System.out.println("Error: Could not find column numbers from headers.");
+            if (cityIndex == -1) {
+                System.out.println("Could not find header in the parent CSV that contains \"City\"");
+            }
+            if (nameIndex == -1) {
+                System.out.println("Could not find header in the parent CSV that contains \"Dealer Name\"");
+            }
+            if (resultNameIndex == -1) {
+                System.out.println("Could not find header in the results CSV that contains \"Name\"");
+            }
+            if (resultLinkIndex == -1) {
+                System.out.println("Could not find header in the results CSV that contains \"Link\"");
+            }
+            System.out.println("Make sure that csv file contains these headers and are labeled correctly.");
+            System.exit(1);
+        }
+
+        //ID, other information including name and city
         HashMap<String, String[]> parentMap = new HashMap<>();
+
+        //ID, ArrayList<Result Name, Result Link>
         HashMap<String, ArrayList<String[]>> resultsMap = new HashMap<>();
 
+        //Create parent ID map
         for (String[] row : parsedMainCSV) {
             parentMap.put(row[0], row);
         }
 
+
+        //Populate resultsMap
         for (String[] row : parsedSecondaryCSV) {
             if (resultsMap.containsKey(row[0])) {
                 ArrayList<String[]> resultsForRow = resultsMap.get(row[0]);
@@ -59,93 +106,37 @@ public class ResultScorer {
             }
         }
 
-        int urlColumn = -1;
-        int dealerNoColumn = -1;
-        int dealerNameColumn = -1;
-        int dealerCityColumn = -1;
-        int yahooLocalNameColumn = -1; //Yahoo Local addition
-        int yahooLocalLinkColumn = -1;
-        boolean isYahooLocal = false;
-        String[] headers = parsedMainCSV.get(0);
-
-        for (int i = 1; i < headers.length; i++) {
-            String head = headers[i];
-            if (head.contains("Dealer No")) {
-                dealerNoColumn = i;
-            } else if (head.contains("Dealer Name")) {
-                dealerNameColumn = i;
-            } else if (head.contains("Dealer City")) {
-                dealerCityColumn = i;
-            } else if (head.contains("URL")) {
-                urlColumn = i;
-            } else if (head.equals("YahooLocalName")) { //Yahoo Local addition
-                yahooLocalNameColumn = i;
-                isYahooLocal = true;
-            } else if (head.equals("YahooLocalLink")) {
-                yahooLocalLinkColumn = i;
-                isYahooLocal = true;
-            }
-        }
-
-        if (urlColumn == -1 || dealerCityColumn == -1 || dealerNoColumn == -1 || dealerNameColumn == -1) {
-            System.out.println("Error: Could not find column numbers from headers.");
-            if (urlColumn == -1) {
-                System.out.println("Could not find header that contains \"URL.\"");
-            }
-            if (dealerCityColumn == -1) {
-                System.out.println("Could not find header that contains \"City.\"");
-            }
-            if (dealerNameColumn == -1) {
-                System.out.println("Could not find header that contains \"Name\"");
-            }
-            if (dealerNoColumn == -1) {
-                System.out.println("Could not find header that contains \"Dealer No\"");
-            }
-            System.out.println("Make sure that csv file contains these headers and are labeled correctly.");
-            System.exit(1);
-        }
+        ArrayList<String> presentIDs = new ArrayList<>();
 
         for (String id : parentMap.keySet()) {
             if (resultsMap.containsKey(id)) {
                 String[] parentRow = parentMap.get(id);
                 for (String[] resultRow : resultsMap.get(id)) {
-                    toWrite.add(new String[]{parentRow[urlColumn], parentRow[dealerNoColumn],
-                            parentRow[dealerNameColumn], parentRow[dealerCityColumn], resultRow[1], resultRow[2]});
+                    presentIDs.add(id);
+                    ArrayList<String> rl = new ArrayList<>(Arrays.asList(parentRow));
+                    rl.add(resultRow[resultNameIndex]);
+                    rl.add(resultRow[resultLinkIndex]);
+                    toWrite.add(rl.toArray(new String[rl.size()]));
                 }
             } else {
                 String[] parentRow = parentMap.get(id);
-                boolean doesExist = false;
-                for (String[] testIfEntryExists : toWrite) {
-                    if (testIfEntryExists[1].equalsIgnoreCase(parentRow[dealerNoColumn])) {
-                        doesExist = true;
-                    }
-                }
-                if (!doesExist) {
-                    //Yahoo Local Addition.
-                    if (isYahooLocal) {
-                        String[] head = parentMap.get(id);
-                        if (!head[yahooLocalNameColumn].isEmpty() && !head[yahooLocalLinkColumn].isEmpty()) {
-                            toWrite.add(new String[]{parentRow[urlColumn], parentRow[dealerNoColumn],
-                                    parentRow[dealerNameColumn], parentRow[dealerCityColumn],
-                                    head[yahooLocalNameColumn], head[yahooLocalLinkColumn]});
-                            doesExist = true;
-                        }
-                    }
-                    // end
-                    if (!doesExist) {
-                        toWrite.add(new String[]{parentRow[urlColumn], parentRow[dealerNoColumn],
-                                parentRow[dealerNameColumn], parentRow[dealerCityColumn], "NA", "NA"});
-                    }
+                if (!presentIDs.contains(id)) {
+                    ArrayList<String> rl = new ArrayList<>(Arrays.asList(parentRow));
+                    rl.add("NA");
+                    rl.add("NA");
+                    toWrite.add(rl.toArray(new String[rl.size()]));
                 }
             }
         }
 
+        resultNameIndex = toWrite.get(0).length - 2;
+        resultLinkIndex = toWrite.get(0).length - 1;
 
         String path = mainCSV.getPath();
         String folderPath = path.substring(0,path.lastIndexOf("\\")+1);
         String fileName = path.substring(path.lastIndexOf("\\")+1);
         CSVUtils.writeCSV(folderPath + "Organized" + fileName, toWrite);
-        return toWrite;
+        this.organizedCSV = toWrite;
     }
 
     /**
@@ -192,93 +183,116 @@ public class ResultScorer {
         //Blacklist
         System.out.print("Enabling Blacklist will drop common social media and review sites.\n" +
                 "This reduces false positives if you are searching for unique URLs." +
-                "\nUse Blacklist? (Y/N): ");
+                "\n\nUse Blacklist? (Y/N): ");
         String input = in.nextLine().toLowerCase();
         boolean useBL = false;
         if (input.contains("yes") || input.contains("es") || input.contains("ye") || input.equalsIgnoreCase("y")) {
             useBL = true;
         }
 
+        //Searching results on a specific site
+        System.out.println("If you are searching for pages from a specific site (e.g. facebook), you can drop results" +
+                "\nthat do not contain a given string in it's url. For example, entering \"facebook\" will only" +
+                "\nproduce results with facebook in the url." +
+                "\n\nSpecific Site Search? (Y/N)");
+        input = in.nextLine().toLowerCase();
+        boolean specificWebsiteSearch = false;
+        String specificWebsite = "";
+        if (input.contains("yes") || input.contains("es") || input.contains("ye") || input.equalsIgnoreCase("y")) {
+            specificWebsiteSearch = true;
+            System.out.println("Enter string to search for in URL: ");
+            specificWebsite = in.next().toLowerCase();
+        }
+
         //URLscoring
         System.out.println("Scoring the URL as an extra measure can increase accuracy when searching for unique URLS," +
-                "\nsuch as dealer websites. If you're only processing results from a single website, you might want to" +
-                "\nturn this off." +
-                "\nScore URLS? (Y/N)");
+                "\nsuch as dealer websites. If you're only processing results from a single website (e.g. facebook)," +
+                "\nyou will want to turn this off." +
+                "\n\nScore URLS? (Y/N)");
         input = in.nextLine().toLowerCase();
         boolean scoreURLs = false;
         if (input.contains("yes") || input.contains("es") || input.contains("ye") || input.equalsIgnoreCase("y")) {
             scoreURLs = true;
         }
-
         //End user input
 
+        //Organize
         System.out.println("[ResultSorter] Organizing CSV file...");
-        ArrayList<String[]> parsedOrganizedCSV = this.organizeCSV(mainCSV, secondaryCSV);
+        organizeCSV(mainCSV, secondaryCSV);
         System.out.println("[ResultSorter] CSV Organized.");
 
-        ArrayList<String[]> processedOrganizedCSV = new ArrayList<>();
-        processedOrganizedCSV.add(new String[]{"Search URL","Dealer No","Search Name","Result","Link"});
-
+        //Iterate through results
         System.out.println("[ResultSorter] Iterating through results...");
-
         int i = 1;
-        while (i < parsedOrganizedCSV.size()-1) {
+        ArrayList<String[]> processedOrganizedCSV = new ArrayList<>();
+        processedOrganizedCSV.add(organizedCSV.get(0));
 
-            String[] line = parsedOrganizedCSV.get(i);
-            String startUrl = line[0];
-            String dealerNo = line[1];
-            String name = line[2];
-            String city = line[3];
+        while (i < organizedCSV.size() - 1) {
+
+            String[] line = organizedCSV.get(i);
+            String id = line[0];
+            String name = line[nameIndex];
+            String city = line[cityIndex];
 
             ArrayList<String[]> results = new ArrayList<>();
 
             int resultIndex = 0;
-            if (i + resultIndex < parsedOrganizedCSV.size()) {
-                while (parsedOrganizedCSV.get(i+resultIndex)[0].equalsIgnoreCase(startUrl)) {
-                    String[] result = {parsedOrganizedCSV.get(i + resultIndex)[4], parsedOrganizedCSV.get(i + resultIndex)[5]};
+            if (i + resultIndex < organizedCSV.size()) {
+                while (i + resultIndex < organizedCSV.size() && organizedCSV.get(i + resultIndex)[0].equalsIgnoreCase(id)) {
+                    String[] result = {organizedCSV.get(i + resultIndex)[resultNameIndex], organizedCSV.get(i + resultIndex)[resultLinkIndex]};
                     //Check Blacklist
                     if (useBL) {
                         if (!isBlacklisted(result[1])) {
-                            results.add(result);
+                            //Check Specific Website String
+                            if (!specificWebsiteSearch || result[1].contains(specificWebsite)) {
+                                results.add(result);
+                            }
                         }
                     } else {
-                        results.add(result);
-                    }
-                    if (i + resultIndex + 1 >= parsedOrganizedCSV.size()) {
-                        break;
+                        //Check Specific Website String
+                        if (!specificWebsiteSearch || result[1].contains(specificWebsite)) {
+                            results.add(result);
+                        }
                     }
                     resultIndex++;
                 }
             } else {
-                String[] result = {parsedOrganizedCSV.get(i + resultIndex)[4], parsedOrganizedCSV.get(i + resultIndex)[5]};
+                String[] result = {organizedCSV.get(i + resultIndex)[resultNameIndex],
+                        organizedCSV.get(i + resultIndex)[resultLinkIndex]};
                 //Check Blacklist
                 if (useBL) {
                     if (!isBlacklisted(result[1])) {
-                        results.add(result);
+                        //Check Specific Website String
+                        if (!specificWebsiteSearch || result[1].contains(specificWebsite)) {
+                            results.add(result);
+                        }
                     }
                 } else {
-                    results.add(result);
+                    //Check Specific Website String
+                    if (!specificWebsiteSearch || result[1].contains(specificWebsite)) {
+                        results.add(result);
+                    }
                 }
-
-                resultIndex++;
             }
 
+            //Score Results
             Map<String[], Integer> resultsMap = this.scoreResults(name, city, currentDealerType, results, scoreURLs);
-
-
-
             int highestScore = 0;
-
             for (int score : resultsMap.values()) {
                 if (score > highestScore) {
                     highestScore = score;
                 }
             }
 
+            //Add to processed CSV
             for (Map.Entry<String[], Integer> entry : resultsMap.entrySet()) {
                 if (entry.getValue() >= highestScore-1) {
-                    String[] toAdd = {startUrl, dealerNo, name, entry.getKey()[0], entry.getKey()[1]};
-                    processedOrganizedCSV.add(toAdd);
+
+                    ArrayList<String> rowToAdd = new ArrayList<>(Arrays.asList(organizedCSV.get(i)));
+                    rowToAdd.set(rowToAdd.size() - 2, entry.getKey()[0]);
+                    rowToAdd.set(rowToAdd.size() - 1, entry.getKey()[1]);
+                    processedOrganizedCSV.add(rowToAdd.toArray(new String[rowToAdd.size()]));
+
                 }
             }
 

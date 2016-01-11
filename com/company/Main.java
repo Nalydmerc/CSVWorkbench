@@ -41,14 +41,14 @@ import java.util.regex.Pattern;
  *      program to run properly.
  *  //TODO Fix that.
  *  //TODO add method to list all files if no files are found containing "_"
+ *  //TODO Re-design with a CSV object instead of HashMap
  *  The secondary CSV must have column labeled "Name" and "Link"
  */
 
 public class Main {
 
     public static String CurrentDealerType = "";
-    private ResultScorer resultScorer = new ResultScorer(this);
-    private CSVUtils csvUtils = new CSVUtils();
+    private ResultScorer resultScorer = new ResultScorer();
 
     public static void main(String[] args) {
         Main main = new Main();
