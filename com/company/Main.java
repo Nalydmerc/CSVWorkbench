@@ -36,13 +36,11 @@ import java.util.regex.Pattern;
  *
  * For ResultScorer to run propperly, two CSV files are needed.
  *  Both CSVs must have a Unique ID as the first column. Visual Web Ripper does this by default.
- *  The main CSV must have columns labeled "Start URL", "Dealer No", "Dealer Name", "Dealer City"
- *  If you do not have the Dealer Number, you need to at least add a column with the "Dealer No" header for the
- *      program to run properly.
- *  //TODO Fix that.
+ *  The main CSV must have columns labeled "Start URL", one containing "Name", and on containing "city"
+ *  The secondary CSV must have columns that contain "Name" and "Link"
+ *
  *  //TODO add method to list all files if no files are found containing "_"
  *  //TODO Re-design with a CSV object instead of HashMap
- *  The secondary CSV must have column labeled "Name" and "Link"
  */
 
 public class Main {

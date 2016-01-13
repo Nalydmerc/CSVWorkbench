@@ -56,25 +56,32 @@ public class CSVUtils {
     public static void writeCSV(String path, ArrayList<String[]> lines) {
         String fileName = path.substring(path.lastIndexOf("\\") + 1);
         System.out.println("[CSVUtils] Writing File: " + fileName + " ...");
-        try {
-            PrintWriter writer = new PrintWriter(path);
-            for (String[] line : lines) {
-                String toWrite = "\"";
-                for (String val:line) {
-                    if (val == null) {
-                        val = "";
+        boolean complete = false;
+
+        do {
+            try {
+                PrintWriter writer = new PrintWriter(path);
+                for (String[] line : lines) {
+                    String toWrite = "\"";
+                    for (String val : line) {
+                        if (val == null) {
+                            val = "";
+                        }
+                        val = val.replace("\"", "\"\"");
+                        toWrite += val;
+                        toWrite += "\",\"";
                     }
-                    val = val.replace("\"", "\"\"");
-                    toWrite += val;
-                    toWrite += "\",\"";
+                    toWrite = toWrite.substring(0, toWrite.length() - 2);
+                    writer.println(toWrite);
                 }
-                toWrite = toWrite.substring(0, toWrite.length()-2);
-                writer.println(toWrite);
+                writer.close();
+                complete = true;
+            } catch (FileNotFoundException e) {
+                System.out.print("Please close the already open excel sheet. Press Enter to continue.");
+                Scanner in = new Scanner(System.in);
+                in.nextLine();
             }
-            writer.close();
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        }
+        } while (!complete);
         System.out.println("[CSVUtils] Done");
     }
 

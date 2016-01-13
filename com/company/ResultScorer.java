@@ -14,6 +14,7 @@ public class ResultScorer {
             "yahoo.com/", "youtube.com/", "dealerrater.com/", "dealerrater.ca", "autotrader.com/", "autotrader.ca",
             "autocatch.com/", "wheels.com/", "unhaggle.com/", "oodle.com/", "monsterauto.ca/", "ourbis.ca/",
             "canpages.ca/", "goldbook.ca/"};
+    private static String[] veryNegativeWords = {"used", "find", "for sale"}; //Make sure these are lowercase
     private static String[] possibleExtensions = {"Results","Links","dealers"};
     private int nameIndex = -1;
     private int cityIndex = -1;
@@ -38,7 +39,7 @@ public class ResultScorer {
         ArrayList<String[]> toWrite = new ArrayList<>();
 
         ArrayList<String> headers = new ArrayList<>(Arrays.asList(parsedMainCSV.get(0)));
-        headers.add("Name");
+        headers.add("Result");
         headers.add("Link");
         toWrite.add(headers.toArray(new String[headers.size()]));
 
@@ -291,6 +292,7 @@ public class ResultScorer {
                     ArrayList<String> rowToAdd = new ArrayList<>(Arrays.asList(organizedCSV.get(i)));
                     rowToAdd.set(rowToAdd.size() - 2, entry.getKey()[0]);
                     rowToAdd.set(rowToAdd.size() - 1, entry.getKey()[1]);
+                    rowToAdd.add(entry.getValue().toString());
                     processedOrganizedCSV.add(rowToAdd.toArray(new String[rowToAdd.size()]));
 
                 }
@@ -348,7 +350,7 @@ public class ResultScorer {
 
             String resultName = result[0];
 
-            if (resultName.equalsIgnoreCase(name)) {
+            if (resultName.toLowerCase().equalsIgnoreCase(name.toLowerCase())) {
                 hitPoints += 10;
             }
 
@@ -371,6 +373,12 @@ public class ResultScorer {
                     } else if (resultWord.equalsIgnoreCase(dealerTypeListEntry)) {
                         hitPoints -= 5;
                     }
+                }
+            }
+
+            for (String word : veryNegativeWords) {
+                if (resultName.toLowerCase().contains(word)) {
+                    hitPoints -= 20;
                 }
             }
 
