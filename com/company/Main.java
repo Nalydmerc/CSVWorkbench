@@ -40,7 +40,8 @@ import java.util.regex.Pattern;
  *  The secondary CSV must have columns that contain "Name" and "Link"
  *
  *  //TODO add method to list all files if no files are found containing "_"
- *  //TODO Re-design with a CSV object instead of HashMap
+ *  //DONE: Re-design with a CSV object instead of HashMap
+ *  //TODO Make project into a library, seperate use from utilities.
  */
 
 public class Main {
@@ -63,26 +64,3 @@ public class Main {
         return results.toArray(new String[results.size()]);
     }
 }
-
-/*
-        //Example use. Saved for later.
-
-        ArrayList<String[]> mainCSV = CSVUtils.getCSV("C:\\Users\\intern\\Desktop\\ProcessedBingSearch.csv");
-        HashMap<String, String[]> locationMap = CSVUtils.createMapFrom("C:\\Users\\intern\\Desktop\\Canada_Bing.csv", 0);
-        ArrayList<String[]> toWrite = new ArrayList<>();
-        String[] header = {"Dealer Name", "City", "Province", "URL"};
-        toWrite.add(header);
-
-        for (String[] result : mainCSV) {
-            String DealerName = result[0];
-            String[] locationMapEntry = locationMap.get(DealerName);
-            String City = locationMapEntry[1];
-            String Province = locationMapEntry[2];
-            String URL = result[1];
-            String[] toWriteRow = {DealerName, City, Province, URL};
-
-            toWrite.add(toWriteRow);
-        }
-
-        CSVUtils.writeCSV("C:\\Users\\intern\\Desktop\\ProcessedCanada_Bing.csv", toWrite);
- */

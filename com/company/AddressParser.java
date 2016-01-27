@@ -10,7 +10,7 @@ import java.io.*;
  *         No, it's not *great* practice. But it's a lot less work at the moment, and I'll do my best to code it as
  *         well as possible.
  *         <p>
- *         //TODO NOT FINISHED YET. WIP
+ *         //TODO NOT FINISHED YET. This was put on the backburner. I'll work on it eventually.
  */
 public class AddressParser {
 

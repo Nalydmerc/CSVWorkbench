@@ -14,31 +14,31 @@ public class ResultScorer {
             "yahoo.com/", "youtube.com/", "dealerrater.com/", "dealerrater.ca", "autotrader.com/", "autotrader.ca",
             "autocatch.com/", "wheels.com/", "unhaggle.com/", "oodle.com/", "monsterauto.ca/", "ourbis.ca/",
             "canpages.ca/", "goldbook.ca/"};
-    private static String[] veryNegativeWords = {"used", "find", "for sale"}; //Make sure these are lowercase
+    private static String[] veryNegativeWords = {" used", " find", " for sale"}; //Make sure these are lowercase
     private static String[] possibleExtensions = {"Results","Links","dealers"};
     private int nameIndex = -1;
     private int cityIndex = -1;
     private int resultNameIndex = -1;
     private int resultLinkIndex = -1;
-    private ArrayList<String[]> organizedCSV;
+    private CSV organizedCSV;
 
     /**
-     * Pieces together two CSVs based on the output from Visual Web Ripper.
+     * Pieces together two CSVs based on the output from Visual Web Ripper. TODO Update this JavaDoc. It's old.
      *
-     * @param mainCSV      contains one entry for every search. Headers: ID (must be first column), Dealer No, Dealer Name, Start URL
-     * @param secondaryCSV contains multiple results for every search. headers: ID (must be first column), Name, Link
+     * @param mainCSVfile      contains one entry for every search. Headers: ID (must be first column), Dealer No, Dealer Name, Start URL
+     * @param secondaryCSVfile contains multiple results for every search. headers: ID (must be first column), Name, Link
      * @return List of rows, one row for each result, which also contains information from the mainCSV about the search.
      * Column headers ordered: SearchURL, Dealer No, Search Name, Result, Link
      * @implNote There are special additions to handle yahoo local links, as they're a bit different. Additions are properly commented.
      */
-    private void organizeCSV(File mainCSV, File secondaryCSV) {
+    private void organizeCSV(File mainCSVfile, File secondaryCSVfile) {
 
         //Raw CSVs
-        ArrayList<String[]> parsedMainCSV = CSVUtils.getCSV(mainCSV.getPath());
-        ArrayList<String[]> parsedSecondaryCSV = CSVUtils.getCSV(secondaryCSV.getPath());
-        ArrayList<String[]> toWrite = new ArrayList<>();
+        CSV mainCSV = new CSV(mainCSVfile);
+        CSV secondaryCSV = new CSV(secondaryCSVfile);
+        CSV toWrite = CSV.createNew(mainCSV.createNewFileWithPrefix("Organized"));
 
-        ArrayList<String> headers = new ArrayList<>(Arrays.asList(parsedMainCSV.get(0)));
+        ArrayList<String> headers = new ArrayList<>(Arrays.asList(mainCSV.getContent().get(0)));
         headers.add("Result");
         headers.add("Link");
         toWrite.add(headers.toArray(new String[headers.size()]));
@@ -53,7 +53,7 @@ public class ResultScorer {
             }
         }
 
-        headers = new ArrayList<String>(Arrays.asList(parsedSecondaryCSV.get(0)));
+        headers = new ArrayList<String>(Arrays.asList(secondaryCSV.getContent().get(0)));
 
         for (int i = 1; i < headers.size(); i++) {
             String head = headers.get(i);
@@ -89,13 +89,13 @@ public class ResultScorer {
         HashMap<String, ArrayList<String[]>> resultsMap = new HashMap<>();
 
         //Create parent ID map
-        for (String[] row : parsedMainCSV) {
+        for (String[] row : mainCSV.getContent()) {
             parentMap.put(row[0], row);
         }
 
 
         //Populate resultsMap
-        for (String[] row : parsedSecondaryCSV) {
+        for (String[] row : secondaryCSV.getContent()) {
             if (resultsMap.containsKey(row[0])) {
                 ArrayList<String[]> resultsForRow = resultsMap.get(row[0]);
                 resultsForRow.add(row);
@@ -130,13 +130,10 @@ public class ResultScorer {
             }
         }
 
-        resultNameIndex = toWrite.get(0).length - 2;
-        resultLinkIndex = toWrite.get(0).length - 1;
+        resultNameIndex = toWrite.getContent().get(0).length - 2;
+        resultLinkIndex = toWrite.getContent().get(0).length - 1;
 
-        String path = mainCSV.getPath();
-        String folderPath = path.substring(0,path.lastIndexOf("\\")+1);
-        String fileName = path.substring(path.lastIndexOf("\\")+1);
-        CSVUtils.writeCSV(folderPath + "Organized" + fileName, toWrite);
+        toWrite.dump();
         this.organizedCSV = toWrite;
     }
 
@@ -145,27 +142,27 @@ public class ResultScorer {
      */
     public void run() {
 
-        File mainCSV;
-        File secondaryCSV = null;
+        File mainCSVfile;
+        File secondaryCSVfile = null;
 
         do {
             String path = CSVUtils.requestPath("Enter main file path: ");
-            mainCSV = new File(path);
-            if (!mainCSV.exists()) {
+            mainCSVfile = new File(path);
+            if (!mainCSVfile.exists()) {
                 System.out.println("Error: That CSV does not exist. Double check your file path.");
             }
-        } while(!mainCSV.exists());
+        } while (!mainCSVfile.exists());
 
         //Secondary CSV
-        String mainCSVAbPath = mainCSV.getAbsolutePath();
+        String mainCSVAbPath = mainCSVfile.getAbsolutePath();
         String folderPath = mainCSVAbPath.substring(0, mainCSVAbPath.lastIndexOf("\\")+1);
         String fileNameWithoutExtension = mainCSVAbPath.substring(mainCSVAbPath.lastIndexOf("\\")+1, mainCSVAbPath.length()-4);
         Scanner in = new Scanner(System.in);
         boolean found = false;
 
         for (String testE : possibleExtensions) {
-            secondaryCSV = new File(folderPath + fileNameWithoutExtension + "_" + testE + ".csv");
-            if (secondaryCSV.exists()) {
+            secondaryCSVfile = new File(folderPath + fileNameWithoutExtension + "_" + testE + ".csv");
+            if (secondaryCSVfile.exists()) {
                 found = true;
                 break;
             }
@@ -174,7 +171,7 @@ public class ResultScorer {
         if (found) {
             System.out.println("Found results file.");
         } else {
-            secondaryCSV = this.requestResultsFile(folderPath);
+            secondaryCSVfile = this.requestResultsFile(folderPath);
         }
 
         //Dealer type
@@ -219,18 +216,21 @@ public class ResultScorer {
 
         //Organize
         System.out.println("[ResultSorter] Organizing CSV file...");
-        organizeCSV(mainCSV, secondaryCSV);
+        organizeCSV(mainCSVfile, secondaryCSVfile);
         System.out.println("[ResultSorter] CSV Organized.");
 
         //Iterate through results
         System.out.println("[ResultSorter] Iterating through results...");
         int i = 1;
-        ArrayList<String[]> processedOrganizedCSV = new ArrayList<>();
-        processedOrganizedCSV.add(organizedCSV.get(0));
 
-        while (i < organizedCSV.size() - 1) {
+        String newPath = folderPath + "Processed" + fileNameWithoutExtension + ".csv";
+        File f = new File(newPath);
+        CSV processedOrganizedCSV = CSV.createNew(f);
+        processedOrganizedCSV.add(organizedCSV.getContent().get(0));
 
-            String[] line = organizedCSV.get(i);
+        while (i < organizedCSV.getContent().size() - 1) {
+
+            String[] line = organizedCSV.getContent().get(i);
             String id = line[0];
             String name = line[nameIndex];
             String city = line[cityIndex];
@@ -238,9 +238,9 @@ public class ResultScorer {
             ArrayList<String[]> results = new ArrayList<>();
 
             int resultIndex = 0;
-            if (i + resultIndex < organizedCSV.size()) {
-                while (i + resultIndex < organizedCSV.size() && organizedCSV.get(i + resultIndex)[0].equalsIgnoreCase(id)) {
-                    String[] result = {organizedCSV.get(i + resultIndex)[resultNameIndex], organizedCSV.get(i + resultIndex)[resultLinkIndex]};
+            if (i + resultIndex < organizedCSV.getContent().size()) {
+                while (i + resultIndex < organizedCSV.getContent().size() && organizedCSV.getContent().get(i + resultIndex)[0].equalsIgnoreCase(id)) {
+                    String[] result = {organizedCSV.getContent().get(i + resultIndex)[resultNameIndex], organizedCSV.getContent().get(i + resultIndex)[resultLinkIndex]};
                     //Check Blacklist
                     if (useBL) {
                         if (!isBlacklisted(result[1])) {
@@ -258,8 +258,8 @@ public class ResultScorer {
                     resultIndex++;
                 }
             } else {
-                String[] result = {organizedCSV.get(i + resultIndex)[resultNameIndex],
-                        organizedCSV.get(i + resultIndex)[resultLinkIndex]};
+                String[] result = {organizedCSV.getContent().get(i + resultIndex)[resultNameIndex],
+                        organizedCSV.getContent().get(i + resultIndex)[resultLinkIndex]};
                 //Check Blacklist
                 if (useBL) {
                     if (!isBlacklisted(result[1])) {
@@ -289,7 +289,7 @@ public class ResultScorer {
             for (Map.Entry<String[], Integer> entry : resultsMap.entrySet()) {
                 if (entry.getValue() >= highestScore-1) {
 
-                    ArrayList<String> rowToAdd = new ArrayList<>(Arrays.asList(organizedCSV.get(i)));
+                    ArrayList<String> rowToAdd = new ArrayList<>(Arrays.asList(organizedCSV.getContent().get(i)));
                     rowToAdd.set(rowToAdd.size() - 2, entry.getKey()[0]);
                     rowToAdd.set(rowToAdd.size() - 1, entry.getKey()[1]);
                     rowToAdd.add(entry.getValue().toString());
@@ -301,7 +301,7 @@ public class ResultScorer {
             i += resultIndex;
         }
 
-        CSVUtils.writeCSV(folderPath + "Processed" + fileNameWithoutExtension + ".csv", processedOrganizedCSV);
+        processedOrganizedCSV.dump();
     }
 
     /**
@@ -382,9 +382,9 @@ public class ResultScorer {
                 }
             }
 
-            if (resultName.toLowerCase().contains(city)) {
-                hitPoints -= city.split(" ").length;
-            }
+            //if (resultName.toLowerCase().contains(city)) {
+            //    hitPoints -= city.split(" ").length;
+            //}
 
             //Score URL
             if (scoreURLs) {

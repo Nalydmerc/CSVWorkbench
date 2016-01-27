@@ -1,7 +1,7 @@
 package com.company;
 
-import java.io.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Scanner;
 
@@ -28,153 +28,58 @@ public class CSVUtils {
         return path;
     }
 
-    public static HashMap<String, String[]> createMapFrom(String path, int primaryKeyColumn) {
-        ArrayList<String[]> rows = getCSV(path);
-        return createMapFrom(rows, primaryKeyColumn);
-    }
-
     /**
-     * Creates a HashMap so that values can be looked up easily when piecing together CSVs that may not be in the same order.
-     * @param rows CSVUtils csv Hashmap
+     * Creates a HashMap so that values can be looked up easily when
+     * piecing together CSVs that may not be in the same order.
+     * @param csv
      * @param primaryKeyColumn Key you will search for
      */
-    public static HashMap<String, String[]> createMapFrom(ArrayList<String[]> rows, int primaryKeyColumn) {
+    public static HashMap<String, String[]> createMapFrom(CSV csv, int primaryKeyColumn) {
         HashMap<String, String[]> map = new HashMap<>();
 
-        for (String[] row : rows) {
+        for (String[] row : csv.getContent()) {
             map.put(row[primaryKeyColumn], row);
         }
 
         return map;
     }
 
-    /**
-     * Write to CSV file
-     * @param path to file. Will create new if !exist
-     * @param lines List of rows, each row is an array of columns.
-     */
-    public static void writeCSV(String path, ArrayList<String[]> lines) {
-        String fileName = path.substring(path.lastIndexOf("\\") + 1);
-        System.out.println("[CSVUtils] Writing File: " + fileName + " ...");
-        boolean complete = false;
-
-        do {
-            try {
-                PrintWriter writer = new PrintWriter(path);
-                for (String[] line : lines) {
-                    String toWrite = "\"";
-                    for (String val : line) {
-                        if (val == null) {
-                            val = "";
-                        }
-                        val = val.replace("\"", "\"\"");
-                        toWrite += val;
-                        toWrite += "\",\"";
-                    }
-                    toWrite = toWrite.substring(0, toWrite.length() - 2);
-                    writer.println(toWrite);
-                }
-                writer.close();
-                complete = true;
-            } catch (FileNotFoundException e) {
-                System.out.print("Please close the already open excel sheet. Press Enter to continue.");
-                Scanner in = new Scanner(System.in);
-                in.nextLine();
-            }
-        } while (!complete);
-        System.out.println("[CSVUtils] Done");
-    }
 
     /**
-     * Read CSV file into an ArrayList<String[]>
-     * @param path to CSV
-     * @return List of rows, each row is an array of columns.
+     * CombineCSVs
+     * For when you have two CSVs that have data referencing the same objects that can be used as Primary Keys,
+     * and want to combine them together into one. When using this, the values in the CSV do not have to be an any
+     * particular order because the program looks for the common value being referenced.
+     * @param mainCSV CSV you want to add data to
+     * @param secondaryCSV CSV you're adding data from
+     * @param mainPK Column of the Primary key (common refferenced value) to reference when looking for values.
+     * @param secondaryPK Column of the Primary key (common refferenced value) to reference when looking for values.
+     * @param columnToAdd Column of the secondary CSV to add to the mainCSV.
      */
-    public static ArrayList<String[]> getCSV(String path) {
-        String fileName = path.substring(path.lastIndexOf("\\") + 1);
-        System.out.println("[CSVUtils] Reading file: " + fileName + " ...");
-        ArrayList<String[]> csvFile = new ArrayList<>();
-        BufferedReader br = null;
-        String line;
 
-        try {
-            BufferedReader readFirstList = new BufferedReader(new FileReader(path));
-            String firstLine = readFirstList.readLine();
-            String[] separated = firstLine.split(",");
-            int numColumns = separated.length;
+    public static CSV combineCSVs(CSV mainCSV, CSV secondaryCSV, int mainPK, int secondaryPK, int columnToAdd) {
 
-            br = new BufferedReader(new FileReader(path));
-            while ((line = br.readLine()) != null) {
+        HashMap<String, String[]> locationMap = CSVUtils.createMapFrom(secondaryCSV, secondaryPK); //PK of secondary
 
-                ArrayList<String> columns = new ArrayList<>();
-                String value = "";
-                boolean inQuotes = false;
-                for (int i = 0; i < line.length(); i++) {
-                    char next = line.charAt(i);
-                    if (next == '"') { //Quotations always imply quotation wrapped value
-                        if (inQuotes) {
+        CSV toWrite = CSV.createNew(mainCSV.createNewFileWithPrefix("Combined"));
 
-                            boolean endVal = false;
+        for (String[] result : mainCSV.getContent()) {
+            String pk = result[mainPK]; //PrimaryKey
+            String[] locationMapEntry = locationMap.get(pk);
+            String additionalValue = "";
 
-                            if (line.length() > i+1) {
-                                if (line.charAt(i + 1) == '"') {
-                                    //Quotation marks inside of a value are escaped by a second quotation mark
-                                    value += next;
-                                    i++;
-                                } else {
-                                    endVal = true;
-                                }
-                            } else {
-                                //End of value at end of line
-                                endVal = true;
-                            }
-
-                            if (endVal) {
-                                inQuotes = false;
-                                columns.add(value);
-                                value = "";
-                                i++;
-                            }
-
-                        } else {
-                            //Quotation mark is the start of a quotation-wrapped value
-                            inQuotes = true;
-                        }
-                    } else if (next == ',') { //No quotes, comma separated value
-                        if (!inQuotes) {
-                            columns.add(value);
-                            value = "";
-                        } else {
-                            value += next;
-                        }
-                    } else if (line.length() == i + 1) { //No quotes, end of line.
-                        if (inQuotes) {
-                            //Multi-line quotation-wrapped value. Add next line to current.
-                            value += next + " ";
-                            line += br.readLine();
-                        } else {
-                            value += next;
-                            columns.add(value);
-                            value = "";
-                        }
-                    } else {
-                        value += next;
-                    }
-                }
-                csvFile.add(columns.toArray(new String[numColumns]));
+            if (locationMapEntry != null) {
+                additionalValue = locationMapEntry[columnToAdd]; //Column of secondaryCSV
+            } else {
+                additionalValue = "NA";
             }
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            if (br != null) {
-                try {
-                    br.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
+
+            ArrayList ral = new ArrayList(Arrays.asList(result));
+            ral.add(additionalValue);
+            String[] toWriteRow = (String[]) ral.toArray(new String[ral.size()]);
+            toWrite.add(toWriteRow);
         }
-        System.out.println("[CSVUtils] Done");
-        return csvFile;
+
+        return toWrite;
     }
 }
