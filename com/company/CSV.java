@@ -102,9 +102,10 @@ public class CSV {
                 if (lineNum == 0) {
                     numColumns = columns.size();
                     headers = columns.toArray(new String[numColumns]);
+                } else {
+                    csvContent.add(columns.toArray(new String[numColumns]));
                 }
                 lineNum++;
-                csvContent.add(columns.toArray(new String[numColumns]));
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -257,6 +258,10 @@ public class CSV {
         return headers;
     }
 
+    public void setHeaders(ArrayList<String> newHeaders) {
+        headers = newHeaders.toArray(new String[newHeaders.size()]);
+    }
+
     public void setHeaders(String[] newHeaders) {
         headers = newHeaders;
     }
@@ -264,10 +269,6 @@ public class CSV {
     public void addHeader(String newHeader) {
         ArrayList<String> newHeaders = new ArrayList<String>(Arrays.asList(headers));
         newHeaders.add(newHeader);
-        headers = newHeaders.toArray(new String[newHeaders.size()]);
-    }
-
-    public void setHeaders(ArrayList<String> newHeaders) {
         headers = newHeaders.toArray(new String[newHeaders.size()]);
     }
 

@@ -28,7 +28,6 @@ public class ResultScorer {
      * @param secondaryCSVfile contains multiple results for every search. headers: ID (must be first column), Name, Link
      * @return List of rows, one row for each result, which also contains information from the mainCSV about the search.
      * Column headers ordered: SearchURL, Dealer No, Search Name, Result, Link
-     * @implNote There are special additions to handle yahoo local links, as they're a bit different. Additions are properly commented.
      */
     private void organizeCSV(File mainCSVfile, File secondaryCSVfile) {
 
@@ -165,13 +164,13 @@ public class ResultScorer {
             organizedCSV = new CSV(mainCSVfile);
 
             //Make sure the CSV contains the correct headers.
-            resultNameIndex = organizedCSV.getHeaderIndex("name");
+            resultNameIndex = organizedCSV.getHeaderIndex("result");
             resultLinkIndex = organizedCSV.getHeaderIndex("link");
 
             if (resultNameIndex == -1 || resultLinkIndex == -1) {
                 System.out.println("Error: Could not find column numbers from headers.");
                 if (resultNameIndex == -1) {
-                    System.out.println("Could not find header in the results CSV that contains \"Name\"");
+                    System.out.println("Could not find header in the results CSV that contains \"Result\"");
                 }
                 if (resultLinkIndex == -1) {
                     System.out.println("Could not find header in the results CSV that contains \"Link\"");
@@ -234,12 +233,15 @@ public class ResultScorer {
             scoreURLs = true;
         }
 
-        //Iterate through results
+        /*
+            BEGIN RESULT ITERATION
+         */
         System.out.println("[ResultSorter] Iterating through results...");
         int i = 1;
 
         CSV processedOrganizedCSV = CSV.createNew(organizedCSV.createNewFileWithPrefix("Processed"));
-        processedOrganizedCSV.setHeaders(organizedCSV.getContent().get(0));
+        processedOrganizedCSV.setHeaders(organizedCSV.getHeaders());
+        processedOrganizedCSV.addHeader("Confidence");
 
         while (i < organizedCSV.getContent().size() - 1) {
 
@@ -302,17 +304,22 @@ public class ResultScorer {
                 if (entry.getValue() >= highestScore-1) {
 
                     ArrayList<String> rowToAdd = new ArrayList<>(Arrays.asList(organizedCSV.getContent().get(i)));
-                    rowToAdd.set(rowToAdd.size() - 2, entry.getKey()[0]);
-                    rowToAdd.set(rowToAdd.size() - 1, entry.getKey()[1]);
-                    rowToAdd.add(entry.getValue().toString());
-                    processedOrganizedCSV.add(rowToAdd.toArray(new String[rowToAdd.size()]));
 
+                    //Calculate human readable confidence value.
+                    double score = entry.getValue();
+                    double max = name.split(" ").length + 10;
+                    double percent = (score / max) * 100;
+                    percent *= 10;
+                    percent = Math.round(percent);
+                    percent /= 10;
+                    rowToAdd.add(percent + "%");
+
+                    //Add to CSV.
+                    processedOrganizedCSV.add(rowToAdd.toArray(new String[rowToAdd.size()]));
                 }
             }
-
             i += resultIndex;
         }
-
         processedOrganizedCSV.dump();
     }
 
@@ -362,7 +369,7 @@ public class ResultScorer {
             //Lower score of duplicate links
             for (String[] testingLinks: resultsMap.keySet()) {
                 if (testingLinks[1].contains(result[1]) || result[1].contains(testingLinks[1])) {
-                    hitPoints -= 2;
+                    hitPoints -= 3;
                 }
             }
 
@@ -386,11 +393,11 @@ public class ResultScorer {
 
             for (String resultWord:resultName.split(" ")) {
                 for (String dealerTypeListEntry:dealerTypes) {
-                    //Add two points if the make matches the dealer. Subract five points otherwise.
+                    //Add a point if the make matches the dealer. Subract five points otherwise.
                     //PS: Learn how to spell subtract, Dylan.
                     if (resultWord.equalsIgnoreCase(dealerTypeListEntry) &&
                             currentDealerTypes.contains(dealerTypeListEntry.toLowerCase())) {
-                        hitPoints += 2;
+                        hitPoints += 1;
                     } else if (resultWord.equalsIgnoreCase(dealerTypeListEntry)) {
                         hitPoints -= 5;
                     }
@@ -457,6 +464,13 @@ public class ResultScorer {
                     }
                 }
             }
+
+            //Check if name is blank, assign NA and 0 score accordingly.
+            if (name == "") {
+                hitPoints = 0;
+                name = "NA";
+            }
+
             resultsMap.put(result, hitPoints);
         }
 
