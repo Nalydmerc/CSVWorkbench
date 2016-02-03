@@ -2,23 +2,29 @@ package com.company;
 
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Scanner;
 
 /**
  * @author Nalydmerc
- *         Created 1/27/2016
+ * Created 1/27/2016
+ *
+ * CSV Object Library for reading, combining, altering, and creating CSVs.
+ * //TODO Store content as ArrayList<Dictonary> instead of ArrayList<String>???
+ *
  */
 public class CSV {
 
     private File file;
+    private String[] headers;
     private ArrayList<String[]> content;
 
     private CSV() {
     }
 
     /**
-     * Read CSV file from file
-     *
+     * Read CSV file from file. Extra points if you manage to read in something that isn't a CSV, consequently defying
+     * the logic of the program and confusing the heck out of me as to how you did it.
      * @param file existing file of CSV
      */
     public CSV(File file) {
@@ -31,17 +37,16 @@ public class CSV {
         String line;
 
         try {
-            BufferedReader readFirstList = new BufferedReader(new FileReader(file));
-            String firstLine = readFirstList.readLine();
-            String[] separated = firstLine.split(",");
-            int numColumns = separated.length;
-
             br = new BufferedReader(new FileReader(file));
+            int lineNum = 0;
+            int numColumns = 0;
+
             while ((line = br.readLine()) != null) {
 
                 ArrayList<String> columns = new ArrayList<>();
                 String value = "";
                 boolean inQuotes = false;
+                //We read the line character by character to take the properties of CSV files into account
                 for (int i = 0; i < line.length(); i++) {
                     char next = line.charAt(i);
                     if (next == '"') { //Quotations always imply quotation wrapped value
@@ -94,6 +99,11 @@ public class CSV {
                         value += next;
                     }
                 }
+                if (lineNum == 0) {
+                    numColumns = columns.size();
+                    headers = columns.toArray(new String[numColumns]);
+                }
+                lineNum++;
                 csvContent.add(columns.toArray(new String[numColumns]));
             }
         } catch (IOException e) {
@@ -118,7 +128,27 @@ public class CSV {
     }
 
     /**
+     * Get the index of a String header in the array of headers.
+     *
+     * @param headerName Name of the String header you're searching for.
+     * @return the int index of the header. Return -1 if it cannot be found. You outta luck, holmes.
+     */
+    public int getHeaderIndex(String headerName) {
+        int id = -1;
+        for (int i = 1; i < headers.length; i++) {
+            String head = headers[i];
+            if (head.toLowerCase().contains(headerName)) {
+                return i;
+            }
+        }
+        return id;
+    }
+
+    /**
      * Dump all data into file.
+     * The CSV will probably be sad when you dump it, but after about a week of crying into its pillow
+     * it'll realize there are plenty of fish in the sea. The CSV might develop some hard feelings toward you, though.
+     *
      */
     public void dump() {
 
@@ -127,7 +157,11 @@ public class CSV {
         do {
             try {
                 PrintWriter writer = new PrintWriter(file);
-                for (String[] line : content) {
+                ArrayList<String[]> fullCSVtoWrite = content;
+                fullCSVtoWrite.add(0, headers);
+
+
+                for (String[] line : fullCSVtoWrite) {
                     String toWrite = "\"";
                     for (String val : line) {
                         if (val == null) {
@@ -219,6 +253,28 @@ public class CSV {
         return content;
     }
 
+    public String[] getHeaders() {
+        return headers;
+    }
+
+    public void setHeaders(String[] newHeaders) {
+        headers = newHeaders;
+    }
+
+    public void addHeader(String newHeader) {
+        ArrayList<String> newHeaders = new ArrayList<String>(Arrays.asList(headers));
+        newHeaders.add(newHeader);
+        headers = newHeaders.toArray(new String[newHeaders.size()]);
+    }
+
+    public void setHeaders(ArrayList<String> newHeaders) {
+        headers = newHeaders.toArray(new String[newHeaders.size()]);
+    }
+
+    /**
+     * Appends a String[] row to the end of CSV.content
+     * @param row to append.
+     */
     public void add(String[] row) {
         content.add(row);
     }

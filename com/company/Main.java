@@ -28,19 +28,16 @@ import java.util.regex.Pattern;
 
 /**
  * CSVWorkbench
- * @author Nalydmerc
+ * @author Nalydmerc@gmail.com
  *
  * A work area with CSV Utilities.
  * This is designed to be used on the fly. Code in main() will usually be for one time
  * CSV runs made for a specific purpose.
  *
- * For ResultScorer to run propperly, two CSV files are needed.
- *  Both CSVs must have a Unique ID as the first column. Visual Web Ripper does this by default.
- *  The main CSV must have columns labeled "Start URL", one containing "Name", and on containing "city"
- *  The secondary CSV must have columns that contain "Name" and "Link"
  *
- *  //TODO add method to list all files if no files are found containing "_"
+ *
  *  //DONE: Re-design with a CSV object instead of HashMap
+ *  //TODO add method to list all files if no files are found containing "_"
  *  //TODO Make project into a library, seperate use from utilities.
  */
 

@@ -17,7 +17,6 @@ public class ResultScorer {
     private static String[] veryNegativeWords = {" used", " find", " for sale"}; //Make sure these are lowercase
     private static String[] possibleExtensions = {"Results","Links","dealers"};
     private int nameIndex = -1;
-    private int cityIndex = -1;
     private int resultNameIndex = -1;
     private int resultLinkIndex = -1;
     private CSV organizedCSV;
@@ -38,40 +37,17 @@ public class ResultScorer {
         CSV secondaryCSV = new CSV(secondaryCSVfile);
         CSV toWrite = CSV.createNew(mainCSV.createNewFileWithPrefix("Organized"));
 
-        ArrayList<String> headers = new ArrayList<>(Arrays.asList(mainCSV.getContent().get(0)));
-        headers.add("Result");
-        headers.add("Link");
-        toWrite.add(headers.toArray(new String[headers.size()]));
+        ArrayList<String> headers = new ArrayList<>(Arrays.asList(mainCSV.getHeaders()));
+        toWrite.setHeaders(mainCSV.getHeaders());
+        toWrite.addHeader("Result");
+        toWrite.addHeader("Link");
 
-        //Get indexes
-        for (int i = 1; i < headers.size(); i++) {
-            String head = headers.get(i);
-            if (head.toLowerCase().contains("name")) {
-                this.nameIndex = i;
-            } else if (head.toLowerCase().contains("city")) {
-                this.cityIndex = i;
-            }
-        }
+        //Make sure the CSVs contain the correct headers.
+        resultNameIndex = secondaryCSV.getHeaderIndex("name");
+        resultLinkIndex = secondaryCSV.getHeaderIndex("link");
 
-        headers = new ArrayList<String>(Arrays.asList(secondaryCSV.getContent().get(0)));
-
-        for (int i = 1; i < headers.size(); i++) {
-            String head = headers.get(i);
-            if (head.toLowerCase().contains("name")) {
-                resultNameIndex = i;
-            } else if (head.toLowerCase().contains("link")) {
-                resultLinkIndex = i;
-            }
-        }
-
-        if (nameIndex == -1 || cityIndex == -1 || resultNameIndex == -1 || resultLinkIndex == -1) {
+        if (resultNameIndex == -1 || resultLinkIndex == -1) {
             System.out.println("Error: Could not find column numbers from headers.");
-            if (cityIndex == -1) {
-                System.out.println("Could not find header in the parent CSV that contains \"City\"");
-            }
-            if (nameIndex == -1) {
-                System.out.println("Could not find header in the parent CSV that contains \"Dealer Name\"");
-            }
             if (resultNameIndex == -1) {
                 System.out.println("Could not find header in the results CSV that contains \"Name\"");
             }
@@ -144,6 +120,7 @@ public class ResultScorer {
 
         File mainCSVfile;
         File secondaryCSVfile = null;
+        Scanner in = new Scanner(System.in);
 
         do {
             String path = CSVUtils.requestPath("Enter main file path: ");
@@ -153,36 +130,80 @@ public class ResultScorer {
             }
         } while (!mainCSVfile.exists());
 
-        //Secondary CSV
-        String mainCSVAbPath = mainCSVfile.getAbsolutePath();
-        String folderPath = mainCSVAbPath.substring(0, mainCSVAbPath.lastIndexOf("\\")+1);
-        String fileNameWithoutExtension = mainCSVAbPath.substring(mainCSVAbPath.lastIndexOf("\\")+1, mainCSVAbPath.length()-4);
-        Scanner in = new Scanner(System.in);
-        boolean found = false;
+        //Organize the CSVs First. We need to stitch the two CSVs together to work with them
+        //(If they are indeed separated)
+        System.out.println("Is your data separated into two CSVs, like output from Visual Web Ripper, needing to be" +
+                " organized? (yes/no): ");
+        String input = in.nextLine().toLowerCase();
+        if (input.contains("yes") || input.contains("es") || input.contains("ye") || input.equalsIgnoreCase("y")) {
 
-        for (String testE : possibleExtensions) {
-            secondaryCSVfile = new File(folderPath + fileNameWithoutExtension + "_" + testE + ".csv");
-            if (secondaryCSVfile.exists()) {
-                found = true;
-                break;
+            //Secondary CSV
+            String mainCSVAbPath = mainCSVfile.getAbsolutePath();
+            String folderPath = mainCSVAbPath.substring(0, mainCSVAbPath.lastIndexOf("\\") + 1);
+            String fileNameWithoutExtension = mainCSVAbPath.substring(mainCSVAbPath.lastIndexOf("\\") + 1,
+                    mainCSVAbPath.length() - 4);
+            boolean found = false;
+
+            for (String testE : possibleExtensions) {
+                secondaryCSVfile = new File(folderPath + fileNameWithoutExtension + "_" + testE + ".csv");
+                if (secondaryCSVfile.exists()) {
+                    found = true;
+                    break;
+                }
+            }
+
+            if (found) {
+                System.out.println("Found results file.");
+            } else {
+                secondaryCSVfile = this.requestResultsFile(folderPath);
+            }
+
+            System.out.println("[ResultSorter] Organizing CSV file...");
+            organizeCSV(mainCSVfile, secondaryCSVfile);
+            System.out.println("[ResultSorter] CSV Organized.");
+        } else {
+            organizedCSV = new CSV(mainCSVfile);
+
+            //Make sure the CSV contains the correct headers.
+            resultNameIndex = organizedCSV.getHeaderIndex("name");
+            resultLinkIndex = organizedCSV.getHeaderIndex("link");
+
+            if (resultNameIndex == -1 || resultLinkIndex == -1) {
+                System.out.println("Error: Could not find column numbers from headers.");
+                if (resultNameIndex == -1) {
+                    System.out.println("Could not find header in the results CSV that contains \"Name\"");
+                }
+                if (resultLinkIndex == -1) {
+                    System.out.println("Could not find header in the results CSV that contains \"Link\"");
+                }
+                System.out.println("Make sure that csv file contains these headers and are labeled correctly.");
+                System.exit(1);
             }
         }
 
-        if (found) {
-            System.out.println("Found results file.");
-        } else {
-            secondaryCSVfile = this.requestResultsFile(folderPath);
+        /*
+         * From this point forward the CSVs are now organized. All of our data is contained in the organizedCSV.
+         */
+
+        //Get index of Client Name
+        String[] headers = organizedCSV.getHeaders();
+        for (int i = 1; i < headers.length; i++) {
+            String head = headers[i];
+            if (head.toLowerCase().contains("clientname") || head.toLowerCase().contains("client name")) {
+                this.nameIndex = i;
+            }
         }
 
-        //Dealer type
-        System.out.println("Enter Dealer Type. Make sure to double check your spelling:");
-        String currentDealerType = in.nextLine();
+        if (nameIndex == -1) {
+            System.out.println("Could not find header in the parent CSV that contains \"Client Name\"");
+            System.exit(1);
+        }
 
         //Blacklist
         System.out.print("Enabling Blacklist will drop common social media and review sites.\n" +
                 "This reduces false positives if you are searching for unique URLs." +
                 "\n\nUse Blacklist? (Y/N): ");
-        String input = in.nextLine().toLowerCase();
+        input = in.nextLine().toLowerCase();
         boolean useBL = false;
         if (input.contains("yes") || input.contains("es") || input.contains("ye") || input.equalsIgnoreCase("y")) {
             useBL = true;
@@ -212,28 +233,19 @@ public class ResultScorer {
         if (input.contains("yes") || input.contains("es") || input.contains("ye") || input.equalsIgnoreCase("y")) {
             scoreURLs = true;
         }
-        //End user input
-
-        //Organize
-        System.out.println("[ResultSorter] Organizing CSV file...");
-        organizeCSV(mainCSVfile, secondaryCSVfile);
-        System.out.println("[ResultSorter] CSV Organized.");
 
         //Iterate through results
         System.out.println("[ResultSorter] Iterating through results...");
         int i = 1;
 
-        String newPath = folderPath + "Processed" + fileNameWithoutExtension + ".csv";
-        File f = new File(newPath);
-        CSV processedOrganizedCSV = CSV.createNew(f);
-        processedOrganizedCSV.add(organizedCSV.getContent().get(0));
+        CSV processedOrganizedCSV = CSV.createNew(organizedCSV.createNewFileWithPrefix("Processed"));
+        processedOrganizedCSV.setHeaders(organizedCSV.getContent().get(0));
 
         while (i < organizedCSV.getContent().size() - 1) {
 
             String[] line = organizedCSV.getContent().get(i);
             String id = line[0];
             String name = line[nameIndex];
-            String city = line[cityIndex];
 
             ArrayList<String[]> results = new ArrayList<>();
 
@@ -277,7 +289,7 @@ public class ResultScorer {
             }
 
             //Score Results
-            Map<String[], Integer> resultsMap = this.scoreResults(name, city, currentDealerType, results, scoreURLs);
+            Map<String[], Integer> resultsMap = this.scoreResults(name, results, scoreURLs);
             int highestScore = 0;
             for (int score : resultsMap.values()) {
                 if (score > highestScore) {
@@ -323,20 +335,26 @@ public class ResultScorer {
     /**
      * Processes the results to find the correct listing.
      *
-     * @param results An array of the results as represented by an array containing
+     * @param results An ArrayList of the results as represented by an array containing
      *      the name and link of the entry. {name, link}
-     * @param name of dealership; used in the scoring process
-     * @param city of dealership; used in the scoring process
-     * @param dealerType used in the scoring process
+     * @param name of dealership; This is what we're trying to find the closes match to.
      * @return A map of the results as represented by an array containing
      *      the name and link of the entry, and the integer representing its score
      */
 
-    public Map<String[], Integer> scoreResults(String name, String city, String dealerType,
-                                               ArrayList<String[]> results, boolean scoreURLs) {
+    public Map<String[], Integer> scoreResults(String name, ArrayList<String[]> results, boolean scoreURLs) {
 
         Map<String[], Integer> resultsMap = new HashMap<>();
         String[] nameWords = name.split(" ");
+
+        //Find makes in the name so we can match them.
+        //"Ey, you sell Chevys or Lamborghinis?"
+        ArrayList<String> currentDealerTypes = new ArrayList<>();
+        for (String dealer : dealerTypes) {
+            if (name.contains(dealer)) {
+                currentDealerTypes.add(dealer.toLowerCase());
+            }
+        }
 
         for (String[] result : results) {
             int hitPoints = 0;
@@ -350,10 +368,12 @@ public class ResultScorer {
 
             String resultName = result[0];
 
+            //10/10 Result name, jackpot, you got it, add 10 points.
             if (resultName.toLowerCase().equalsIgnoreCase(name.toLowerCase())) {
                 hitPoints += 10;
             }
 
+            //Almost an exact match. The result name *contains* the exact name of the dealer.
             if (resultName.toLowerCase().contains(name.toLowerCase())) {
                 hitPoints += 5;
             }
@@ -366,30 +386,36 @@ public class ResultScorer {
 
             for (String resultWord:resultName.split(" ")) {
                 for (String dealerTypeListEntry:dealerTypes) {
-
+                    //Add two points if the make matches the dealer. Subract five points otherwise.
+                    //PS: Learn how to spell subtract, Dylan.
                     if (resultWord.equalsIgnoreCase(dealerTypeListEntry) &&
-                            dealerTypeListEntry.equalsIgnoreCase(dealerType)) {
-                        hitPoints++;
+                            currentDealerTypes.contains(dealerTypeListEntry.toLowerCase())) {
+                        hitPoints += 2;
                     } else if (resultWord.equalsIgnoreCase(dealerTypeListEntry)) {
                         hitPoints -= 5;
                     }
                 }
             }
 
+            //I mean when someone cusses at you, you throw them out, right?
+            //JK, we know if the link contains any of these names, it's out.
+            //I.E. We're a car dealer, not the Better Business Bureau.
             for (String word : veryNegativeWords) {
                 if (resultName.toLowerCase().contains(word)) {
                     hitPoints -= 20;
                 }
             }
 
+            //Remove point if the city is contained in the name for some reason.
             //if (resultName.toLowerCase().contains(city)) {
             //    hitPoints -= city.split(" ").length;
             //}
 
-            //Score URL
+            //Score URL based on everything after "www." and before ".com"
             if (scoreURLs) {
 
-                //Format strings first
+                //Format the URL String first so we can work with it more easily.
+                //We're matching only main url, nothing after the first '/'.
                 String resultURL = result[1].toLowerCase();
                 if (resultURL.startsWith("http://")) {
                     resultURL = resultURL.substring(7);
@@ -402,24 +428,32 @@ public class ResultScorer {
                 String scoreAgainstName = name.replace(" ", "");
                 scoreAgainstName = scoreAgainstName.toLowerCase();
 
-                //Begin scoring
+                //SuperDirectMatch, 10/10 URL naming, +10 Points, Level Up, Advance to Go, Collect $200.
                 if (resultURL.contains(scoreAgainstName)) {
                     hitPoints += 10;
                 }
 
+                //"I'll take a point for a name for 200, Alex."
+                //+1 Point for every name word contained in the URL.
                 for (String word : nameWords) {
                     if (resultURL.contains(word.toLowerCase())) {
                         hitPoints++;
                     }
                 }
 
-                if (resultURL.contains(dealerType.toLowerCase())) {
-                    hitPoints++;
+                //Add point for every make that matches the name
+                //We sell Chevys.
+                for (String make : currentDealerTypes) {
+                    if (resultURL.contains(make.toLowerCase())) {
+                        hitPoints++;
+                    }
                 }
 
-                for (String type : dealerTypes) {
-                    if (resultURL.contains(type.toLowerCase()) && !type.equalsIgnoreCase(dealerType)) {
-                        hitPoints -= 3;
+                //Remove for every make that does not match the name.
+                //I said we sell Chevys not Lamborghinis, kid.
+                for (String make : dealerTypes) {
+                    if (resultURL.contains(make.toLowerCase()) && !currentDealerTypes.contains(make.toLowerCase())) {
+                        hitPoints -= 2;
                     }
                 }
             }
