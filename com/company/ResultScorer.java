@@ -3,31 +3,44 @@ package com.company;
 import java.io.File;
 import java.util.*;
 
+/**
+ * @author Nalydmerc@gmail.com
+ *
+ *         3Birds Link/Result processor.
+ *
+ *         This program takes web scraper search result data in the form of a single or pair of CSVs.
+ *         Given the name of a Car Dealership and a list of search results, this program scores each search result based
+ *         on how closely it matches the name of the dealership in an attempt to pick which search result is the
+ *         dealerships listing or page.
+ */
+
 public class ResultScorer {
 
-    private static String[] dealerTypes = {
-            "Honda", "Acura", "Toyota", "Ford", "Hyundai", "Dodge", "Chevrolet","Chrysler",
-            "Jeep", "Lexus", "Nissan", "Fiat", "Lincoln", "Mazda", "Infinity", "Jaguar", "Bently"};
-    private static String[] blacklist = {
-            "bbb.org/", "foursquare.com/", "yelp.com/", "yellowpages.com/", "yellowpages.ca/", "yelp.ca/",
-            "twitter.com/", "instagram.com/", "cars.com/", "CitySearch.com/", "edmunds.com/", "facebook.com/",
-            "yahoo.com/", "youtube.com/", "dealerrater.com/", "dealerrater.ca", "autotrader.com/", "autotrader.ca",
-            "autocatch.com/", "wheels.com/", "unhaggle.com/", "oodle.com/", "monsterauto.ca/", "ourbis.ca/",
-            "canpages.ca/", "goldbook.ca/"};
-    private static String[] veryNegativeWords = {" used", " find", " for sale"}; //Make sure these are lowercase
-    private static String[] possibleExtensions = {"Results","Links","dealers"};
+    private static String[] dealerTypes = {"Honda", "Acura", "Toyota", "Ford", "Hyundai", "Dodge", "Chevrolet", "Chrysler", "Jeep", "Lexus", "Nissan", "Fiat", "Lincoln", "Mazda", "Infinity", "Jaguar", "Bently"};
+    private static String[] blacklist = {"bbb.org/", "foursquare.com/", "yelp.com/", "yellowpages.com/", "yellowpages.ca/", "yelp.ca/", "twitter.com/", "instagram.com/", "cars.com/", "CitySearch.com/", "edmunds.com/", "facebook.com/", "yahoo.com/", "youtube.com/", "dealerrater.com/", "dealerrater.ca", "autotrader.com/", "autotrader.ca", "autocatch.com/", "wheels.com/", "unhaggle.com/", "oodle.com/", "monsterauto.ca/", "ourbis.ca/", "canpages.ca/", "goldbook.ca/"};
+    private static String[] veryNegativeWords = {" used", " find", " for sale"};
+    private static String[] possibleExtensions = {"Results", "Links", "dealers"};
     private int nameIndex = -1;
     private int resultNameIndex = -1;
     private int resultLinkIndex = -1;
     private CSV organizedCSV;
 
     /**
-     * Pieces together two CSVs based on the output from Visual Web Ripper. TODO Update this JavaDoc. It's old.
+     * organizeCSV:
+     * Pieces together two CSVs based on the output from Visual Web Ripper. When Visual Web Ripper exports Data,
+     * heavily depending on how the data collector set up the template, VWR can export it's tables as separate
+     * CSVs. When it exports, it gives each value a Primary Key to tie the values in the CSV to each other, which
+     * this method uses to combine them. Imagine the two CSVs as two Database tables with a one to many
+     * relationship. For every row in the main CSV, there are many results. This method combines them all into one
+     * table. If your data is in two separate CSVs, you'll need to use this.
      *
-     * @param mainCSVfile      contains one entry for every search. Headers: ID (must be first column), Dealer No, Dealer Name, Start URL
-     * @param secondaryCSVfile contains multiple results for every search. headers: ID (must be first column), Name, Link
-     * @return List of rows, one row for each result, which also contains information from the mainCSV about the search.
-     * Column headers ordered: SearchURL, Dealer No, Search Name, Result, Link
+     * The method sets the resulting combined CSV as this.organizedCSV. After using this, you can work with
+     * this.organizedCSV
+     *
+     * @param mainCSVfile      contains one entry for every search. Headers must contain: ID (must be the first column.
+     *                         VWR adds this automatically), Dealer No, Dealer Name
+     * @param secondaryCSVfile contains multiple results for every search. Headers must contain: ID (must be the first
+     *                         column. VWR adds this automatically), Result, Link
      */
     private void organizeCSV(File mainCSVfile, File secondaryCSVfile) {
 
@@ -67,7 +80,6 @@ public class ResultScorer {
         for (String[] row : mainCSV.getContent()) {
             parentMap.put(row[0], row);
         }
-
 
         //Populate resultsMap
         for (String[] row : secondaryCSV.getContent()) {
@@ -121,6 +133,7 @@ public class ResultScorer {
         File secondaryCSVfile = null;
         Scanner in = new Scanner(System.in);
 
+        //We begin by getting the main CSV with our data.
         do {
             String path = CSVUtils.requestPath("Enter main file path: ");
             mainCSVfile = new File(path);
@@ -131,16 +144,15 @@ public class ResultScorer {
 
         //Organize the CSVs First. We need to stitch the two CSVs together to work with them
         //(If they are indeed separated)
-        System.out.println("Is your data separated into two CSVs, like output from Visual Web Ripper, needing to be" +
-                " organized? (yes/no): ");
+        System.out.println("Is your data separated into two CSVs, like output from Visual Web Ripper, needing to be" + " organized? (yes/no): ");
         String input = in.nextLine().toLowerCase();
         if (input.contains("yes") || input.contains("es") || input.contains("ye") || input.equalsIgnoreCase("y")) {
 
-            //Secondary CSV
+            //The user indicated that there are two CSVs, so our data needs to be organized. We'll look for some
+            //common filenames the secondaryCSV might be named, and ask the user for the file path if we can't
             String mainCSVAbPath = mainCSVfile.getAbsolutePath();
             String folderPath = mainCSVAbPath.substring(0, mainCSVAbPath.lastIndexOf("\\") + 1);
-            String fileNameWithoutExtension = mainCSVAbPath.substring(mainCSVAbPath.lastIndexOf("\\") + 1,
-                    mainCSVAbPath.length() - 4);
+            String fileNameWithoutExtension = mainCSVAbPath.substring(mainCSVAbPath.lastIndexOf("\\") + 1, mainCSVAbPath.length() - 4);
             boolean found = false;
 
             for (String testE : possibleExtensions) {
@@ -161,12 +173,12 @@ public class ResultScorer {
             organizeCSV(mainCSVfile, secondaryCSVfile);
             System.out.println("[ResultSorter] CSV Organized.");
         } else {
+            //There is no need for organization, so we read the single given CSV into this.organizedCSV to work with.
             organizedCSV = new CSV(mainCSVfile);
 
             //Make sure the CSV contains the correct headers.
             resultNameIndex = organizedCSV.getHeaderIndex("result");
             resultLinkIndex = organizedCSV.getHeaderIndex("link");
-
             if (resultNameIndex == -1 || resultLinkIndex == -1) {
                 System.out.println("Error: Could not find column numbers from headers.");
                 if (resultNameIndex == -1) {
@@ -199,6 +211,7 @@ public class ResultScorer {
         }
 
         //Blacklist
+        System.out.println("=========\n\n=========");
         System.out.print("Enabling Blacklist will drop common social media and review sites.\n" +
                 "This reduces false positives if you are searching for unique URLs." +
                 "\n\nUse Blacklist? (Y/N): ");
@@ -209,9 +222,10 @@ public class ResultScorer {
         }
 
         //Searching results on a specific site
-        System.out.println("If you are searching for pages from a specific site (e.g. facebook), you can drop results" +
-                "\nthat do not contain a given string in it's url. For example, entering \"facebook\" will only" +
-                "\nproduce results with facebook in the url." +
+        System.out.println("=========\n\n=========");
+        System.out.println("If you are searching for pages containing a specific string. With this you can drop " +
+                "\nresults that do not contain a given string in it's url. For example, entering \"facebook\" will " +
+                "\nonly produce results with facebook in the url." +
                 "\n\nSpecific Site Search? (Y/N)");
         input = in.nextLine().toLowerCase();
         boolean specificWebsiteSearch = false;
@@ -223,6 +237,7 @@ public class ResultScorer {
         }
 
         //URLscoring
+        System.out.println("=========\n\n=========");
         System.out.println("Scoring the URL as an extra measure can increase accuracy when searching for unique URLS," +
                 "\nsuch as dealer websites. If you're only processing results from a single website (e.g. facebook)," +
                 "\nyou will want to turn this off." +
@@ -234,7 +249,7 @@ public class ResultScorer {
         }
 
         /*
-            BEGIN RESULT ITERATION
+            We have what we need. We dispose of the now useless user, and start working.
          */
         System.out.println("[ResultSorter] Iterating through results...");
         int i = 1;
@@ -272,8 +287,7 @@ public class ResultScorer {
                     resultIndex++;
                 }
             } else {
-                String[] result = {organizedCSV.getContent().get(i + resultIndex)[resultNameIndex],
-                        organizedCSV.getContent().get(i + resultIndex)[resultLinkIndex]};
+                String[] result = {organizedCSV.getContent().get(i + resultIndex)[resultNameIndex], organizedCSV.getContent().get(i + resultIndex)[resultLinkIndex]};
                 //Check Blacklist
                 if (useBL) {
                     if (!isBlacklisted(result[1])) {
@@ -301,11 +315,12 @@ public class ResultScorer {
 
             //Add to processed CSV
             for (Map.Entry<String[], Integer> entry : resultsMap.entrySet()) {
-                if (entry.getValue() >= highestScore-1) {
+                if (entry.getValue() >= highestScore - 1) {
 
                     ArrayList<String> rowToAdd = new ArrayList<>(Arrays.asList(organizedCSV.getContent().get(i)));
 
                     //Calculate human readable confidence value.
+                    //Ha, "Human readable." No-one really knows what this means.
                     double score = entry.getValue();
                     double max = name.split(" ").length + 10;
                     double percent = (score / max) * 100;
@@ -326,7 +341,8 @@ public class ResultScorer {
     /**
      * Check if url is on blacklist.
      *
-     * @param url
+     * @param url full String url including ".com/"
+     * @return true/false if the url is blacklisted
      */
     private boolean isBlacklisted(String url) {
         //Check blacklist
@@ -343,10 +359,10 @@ public class ResultScorer {
      * Processes the results to find the correct listing.
      *
      * @param results An ArrayList of the results as represented by an array containing
-     *      the name and link of the entry. {name, link}
-     * @param name of dealership; This is what we're trying to find the closes match to.
+     *                the name and link of the entry. {name, link}
+     * @param name    of dealership; This is what we're trying to find the closes match to.
      * @return A map of the results as represented by an array containing
-     *      the name and link of the entry, and the integer representing its score
+     * the name and link of the entry, and the integer representing its score
      */
 
     public Map<String[], Integer> scoreResults(String name, ArrayList<String[]> results, boolean scoreURLs) {
@@ -367,7 +383,7 @@ public class ResultScorer {
             int hitPoints = 0;
 
             //Lower score of duplicate links
-            for (String[] testingLinks: resultsMap.keySet()) {
+            for (String[] testingLinks : resultsMap.keySet()) {
                 if (testingLinks[1].contains(result[1]) || result[1].contains(testingLinks[1])) {
                     hitPoints -= 3;
                 }
@@ -391,12 +407,11 @@ public class ResultScorer {
                 }
             }
 
-            for (String resultWord:resultName.split(" ")) {
-                for (String dealerTypeListEntry:dealerTypes) {
+            for (String resultWord : resultName.split(" ")) {
+                for (String dealerTypeListEntry : dealerTypes) {
                     //Add a point if the make matches the dealer. Subract five points otherwise.
                     //PS: Learn how to spell subtract, Dylan.
-                    if (resultWord.equalsIgnoreCase(dealerTypeListEntry) &&
-                            currentDealerTypes.contains(dealerTypeListEntry.toLowerCase())) {
+                    if (resultWord.equalsIgnoreCase(dealerTypeListEntry) && currentDealerTypes.contains(dealerTypeListEntry.toLowerCase())) {
                         hitPoints += 1;
                     } else if (resultWord.equalsIgnoreCase(dealerTypeListEntry)) {
                         hitPoints -= 5;
@@ -408,12 +423,12 @@ public class ResultScorer {
             //JK, we know if the link contains any of these names, it's out.
             //I.E. We're a car dealer, not the Better Business Bureau.
             for (String word : veryNegativeWords) {
-                if (resultName.toLowerCase().contains(word)) {
+                if (resultName.toLowerCase().contains(word.toLowerCase())) {
                     hitPoints -= 20;
                 }
             }
 
-            //Remove point if the city is contained in the name for some reason.
+            //Remove point if the city is contained in the name for some reason. No longer used.
             //if (resultName.toLowerCase().contains(city)) {
             //    hitPoints -= city.split(" ").length;
             //}
@@ -466,7 +481,7 @@ public class ResultScorer {
             }
 
             //Check if name is blank, assign NA and 0 score accordingly.
-            if (name == "") {
+            if (name.equals("")) {
                 hitPoints = 0;
                 name = "NA";
             }

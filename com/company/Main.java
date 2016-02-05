@@ -1,4 +1,3 @@
-
 /*
  * CSV workbench
  * @author Nalydmerc@gmail.com
@@ -28,34 +27,39 @@ import java.util.regex.Pattern;
 
 /**
  * CSVWorkbench
+ *
  * @author Nalydmerc@gmail.com
  *
- * A work area with CSV Utilities.
- * This is designed to be used on the fly. Code in main() will usually be for one time
- * CSV runs made for a specific purpose.
+ * This is a workbench for CSV (Comma Separated Value) files. This program treats the CSVs more like database tables,
+ * and the order which rows are kept cannot necessarily be guaranteed.
+ *
+ * Also contained in this program is the Link Result Scorer. See ResultScorer class for more information.
+ *
+ * About CSV Files:
+ *     CSV files are spreadsheets that are contained in a text file with values separated by commas.
+ *     Data can be exported from Visual Web Ripper (Web scrapin gsoftware for which this program was originally
+ *     designed to work with) and Microsoft Excell in the form of CSV files. Data in CSV Files can be easily
+ *     be compared to spreadsheets (such Excell exports) or DataBase tables, with a header that describes what each
+ *     column in a row means, and many rows of data where each row is a single entry.
  *
  *
  *
- *  //DONE: Re-design with a CSV object instead of HashMap
- *  //TODO add method to list all files if no files are found containing "_"
- *  //TODO Make project into a library, seperate use from utilities.
+ * //TODO Make project into a library, seperate use from utilities.
  */
 
 public class Main {
 
-    public static String CurrentDealerType = "";
-    private ResultScorer resultScorer = new ResultScorer();
 
     public static void main(String[] args) {
-        Main main = new Main();
-        main.resultScorer.run();
+        ResultScorer r = new ResultScorer();
+        r.run();
     }
 
     public String[] findRegexIn(String text, String regexSubstring) {
         ArrayList<String> results = new ArrayList<>();
         Pattern reg = Pattern.compile(regexSubstring);
         Matcher matcher = reg.matcher(text);
-        for (int i = 0 ; i < matcher.groupCount(); i++) {
+        for (int i = 0; i < matcher.groupCount(); i++) {
             results.add(matcher.group(i));
         }
         return results.toArray(new String[results.size()]);

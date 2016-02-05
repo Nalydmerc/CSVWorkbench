@@ -7,7 +7,7 @@ import java.util.Scanner;
 
 /**
  * @author Nalydmerc
- *         <p>
+ *
  *         CSV Utility to read and write CSV files.
  */
 
@@ -15,6 +15,7 @@ public class CSVUtils {
 
     /**
      * Get path from user. Accounts for quotations that Windows adds to "Copy as Path."
+     *
      * @param message to tell user when requesting path
      * @return user input path.
      */
@@ -23,7 +24,7 @@ public class CSVUtils {
         System.out.println(message);
         String path = in.nextLine();
         if (path.startsWith("\"")) {
-            path = path.substring(1,path.length()-1);
+            path = path.substring(1, path.length() - 1);
         }
         return path;
     }
@@ -31,6 +32,7 @@ public class CSVUtils {
     /**
      * Creates a HashMap so that values can be looked up easily when
      * piecing together CSVs that may not be in the same order.
+     *
      * @param csv
      * @param primaryKeyColumn Key you will search for
      */
@@ -50,11 +52,12 @@ public class CSVUtils {
      * For when you have two CSVs that have data referencing the same objects that can be used as Primary Keys,
      * and want to combine them together into one. When using this, the values in the CSV do not have to be an any
      * particular order because the program looks for the common value being referenced.
-     * @param mainCSV CSV you want to add data to
+     *
+     * @param mainCSV      CSV you want to add data to
      * @param secondaryCSV CSV you're adding data from
-     * @param mainPK Column of the Primary key (common refferenced value) to reference when looking for values.
-     * @param secondaryPK Column of the Primary key (common refferenced value) to reference when looking for values.
-     * @param columnToAdd Column of the secondary CSV to add to the mainCSV.
+     * @param mainPK       Column of the Primary key (common referenced value) to reference when looking for values.
+     * @param secondaryPK  Column of the Primary key (common referenced value) to reference when looking for values.
+     * @param columnToAdd  Column of the secondary CSV to add to the mainCSV.
      */
 
     public static CSV combineCSVs(CSV mainCSV, CSV secondaryCSV, int mainPK, int secondaryPK, int columnToAdd) {

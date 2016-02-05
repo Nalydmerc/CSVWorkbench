@@ -7,11 +7,10 @@ import java.util.Scanner;
 
 /**
  * @author Nalydmerc
- * Created 1/27/2016
+ *         Created 1/27/2016
  *
- * CSV Object Library for reading, combining, altering, and creating CSVs.
- * //TODO Store content as ArrayList<Dictonary> instead of ArrayList<String>???
- *
+ *         CSV Object Library for reading, combining, altering, and creating CSVs.
+ *         //TODO Store content as ArrayList<Dictonary> instead of ArrayList<String>???
  */
 public class CSV {
 
@@ -25,6 +24,7 @@ public class CSV {
     /**
      * Read CSV file from file. Extra points if you manage to read in something that isn't a CSV, consequently defying
      * the logic of the program and confusing the heck out of me as to how you did it.
+     *
      * @param file existing file of CSV
      */
     public CSV(File file) {
@@ -73,7 +73,6 @@ public class CSV {
                                 value = "";
                                 i++;
                             }
-
                         } else {
                             //Quotation mark is the start of a quotation-wrapped value
                             inQuotes = true;
@@ -149,7 +148,6 @@ public class CSV {
      * Dump all data into file.
      * The CSV will probably be sad when you dump it, but after about a week of crying into its pillow
      * it'll realize there are plenty of fish in the sea. The CSV might develop some hard feelings toward you, though.
-     *
      */
     public void dump() {
 
@@ -160,7 +158,6 @@ public class CSV {
                 PrintWriter writer = new PrintWriter(file);
                 ArrayList<String[]> fullCSVtoWrite = content;
                 fullCSVtoWrite.add(0, headers);
-
 
                 for (String[] line : fullCSVtoWrite) {
                     String toWrite = "\"";
@@ -189,7 +186,6 @@ public class CSV {
     public String getPath() {
         return file.getPath();
     }
-
 
     /**
      * @return Containing folder of file including slash,
@@ -258,14 +254,16 @@ public class CSV {
         return headers;
     }
 
-    public void setHeaders(ArrayList<String> newHeaders) {
-        headers = newHeaders.toArray(new String[newHeaders.size()]);
-    }
-
+    //TODO This is dangerous.
     public void setHeaders(String[] newHeaders) {
         headers = newHeaders;
     }
 
+    public void setHeaders(ArrayList<String> newHeaders) {
+        headers = newHeaders.toArray(new String[newHeaders.size()]);
+    }
+
+    //TODO This is dangerous.
     public void addHeader(String newHeader) {
         ArrayList<String> newHeaders = new ArrayList<String>(Arrays.asList(headers));
         newHeaders.add(newHeader);
@@ -274,9 +272,14 @@ public class CSV {
 
     /**
      * Appends a String[] row to the end of CSV.content
+     *
      * @param row to append.
+     * @throws IllegalArgumentException if the number of columns in the row does not match the headers.
      */
     public void add(String[] row) {
+        if (row.length != headers.length) {
+            throw new IllegalArgumentException();
+        }
         content.add(row);
     }
 }

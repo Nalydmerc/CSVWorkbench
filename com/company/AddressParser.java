@@ -4,12 +4,11 @@ import java.io.*;
 
 /**
  * @author Nalydmerc
+ *
  *         Created 1/4/2016
- *         <p>
  *         So I'm trying to use the pythonCode usaddress library when I already have this written in Java.
  *         No, it's not *great* practice. But it's a lot less work at the moment, and I'll do my best to code it as
  *         well as possible.
- *         <p>
  *         //TODO NOT FINISHED YET. This was put on the backburner. I'll work on it eventually.
  */
 public class AddressParser {
@@ -45,7 +44,7 @@ public class AddressParser {
             BufferedReader in = new BufferedReader(new InputStreamReader(python.getInputStream()));
             BufferedReader error = new BufferedReader(new InputStreamReader(python.getErrorStream()));
 
-            String testAddress = "3201 Bennett Rd. Oak City NC 27857";
+            String testAddress = "";
             System.out.println("asdf");
             writer.write(testAddress);
             System.out.println("asdf");
@@ -58,7 +57,6 @@ public class AddressParser {
             while ((line = error.readLine()) != null) {
                 System.out.println(line);
             }
-
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -79,5 +77,4 @@ public class AddressParser {
         StateName,
         ZipCode
     }
-
 }
